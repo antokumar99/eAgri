@@ -25,7 +25,10 @@
     "react-native-reanimated": "^3.16.6",
     "react-native-safe-area-context": "^5.0.0",
     "react-native-screens": "^4.4.0",
-    "expo-image-picker": "~16.0.3"
+    "expo-image-picker": "~16.0.3",
+    "react-dom": "18.3.1",
+    "react-native-web": "~0.19.13",
+    "@expo/metro-runtime": "~4.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
