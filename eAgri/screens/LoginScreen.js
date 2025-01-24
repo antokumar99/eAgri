@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import logInImage from "../assets/login.jpg"; // <-- Adjust this import to your actual file
 import api from "../services/api";
 

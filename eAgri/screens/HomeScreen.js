@@ -421,7 +421,7 @@ function HomeScreen() {
         </View> */}
         <View style={styles.services}>
           <View style={styles.serviceRow}>
-            <ServiceCard iconName="post" title="Add Post" screenName="CreatePost" />
+            <ServiceCard iconName="post-add" title="Add Post" screenName="CreatePost" />
             {/* <ServiceCard iconName="person-outline" title="কৃষি পরামর্শ" screenName="AdviceScreen" /> */}
             <ServiceCard iconName="key" title="ভাড়া" screenName="RentScreen" />
           </View>
