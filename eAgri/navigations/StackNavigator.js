@@ -24,6 +24,15 @@ import BuyScreen from "../screens/BuyScreen";
 import ProductDetailsScreen from "../screens/ProductDetailsScreen";
 import ResearchScreen from "../screens/ResearchScreen";
 import ForumScreen from "../screens/ForumScreen";
+import AddressEditScreen from '../screens/AddressEditScreen';
+import PaymentWebView from '../screens/PaymentWebView';
+import SellScreen from '../screens/SellScreen';
+import AddToSellScreen from '../screens/AddToSellScreen';
+
+import AdminLogin from '../screens/AdminLogin';
+import AdminRegister from '../screens/AdminRegister';
+import AdminDashboard from '../screens/AdminDashboard';
+
 
 const StackNavigator = () => {
   const Stack = createStackNavigator();
@@ -33,19 +42,22 @@ const StackNavigator = () => {
 
   useEffect(() => {
     const checkAppState = async () => {
-      const isFirstLaunch = await AsyncStorage.getItem("isFirstLaunch");
-      const isLoggedIn = await AsyncStorage.getItem("isLoggedIn");
+      try {
+        const isFirstLaunch = await AsyncStorage.getItem("isFirstLaunch");
+        const isLoggedIn = await AsyncStorage.getItem("token");
 
-      if (isFirstLaunch === null) {
-        // First-time launch
-        await AsyncStorage.setItem("isFirstLaunch", "false");
-        setInitialRoute("Onboarding");
-      } else if (isLoggedIn === "true") {
-        // Already logged in
-        setInitialRoute("Home");
-      } else {
-        // Not logged in
-        setInitialRoute("Login");
+        if (isFirstLaunch === null) {
+          await AsyncStorage.setItem("isFirstLaunch", "false");
+          setInitialRoute("Onboarding");
+        } else if (isLoggedIn) {
+          setInitialRoute("Main"); // Navigate to BottomTabs
+        } else {
+          setInitialRoute("Login");
+        }
+      } catch (error) {
+        console.error("Error checking app state:", error);
+      } finally {
+        setLoading(false); // Done loading
       }
     };
 
@@ -134,6 +146,13 @@ const StackNavigator = () => {
     );
   }
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#008E97" />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>
@@ -154,6 +173,18 @@ const StackNavigator = () => {
         <Stack.Screen name="ProductDetailsScreen" component={ProductDetailsScreen} />
         <Stack.Screen name="ResearchScreen" component={ResearchScreen} />
         <Stack.Screen name="ForumScreen" component={ForumScreen} />
+        <Stack.Screen name="PaymentWebView" component={PaymentWebView} />
+        {/* <Stack.Screen name="PaymentSuccess" component={PaymentSuccess} /> */}
+        <Stack.Screen name="AdminLogin" component={AdminLogin} />
+        <Stack.Screen name="AdminRegister" component={AdminRegister} />
+        <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
+        <Stack.Screen 
+          name="AddressEditScreen" 
+          component={AddressEditScreen} 
+          options={{ headerShown: false }} 
+        />
+        <Stack.Screen name="SellScreen" component={SellScreen} />
+        <Stack.Screen name="AddToSellScreen" component={AddToSellScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
