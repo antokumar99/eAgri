@@ -20,7 +20,8 @@ router.post('/resend-verification', AuthController.resendVerification);
 
 // User routes
 // router.get('/profile', UserController.getProfile);
-router.get('/profile', authMiddleware, UserController.getProfile);             
+router.get('/profile', authMiddleware, UserController.getProfile);
+router.put('/profile', authMiddleware, UserController.updateProfile);             
 
 // Research routes
 router.get('/research', ResearchController.getAllResearch);

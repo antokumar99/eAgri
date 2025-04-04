@@ -334,9 +334,9 @@ const BuyScreen = () => {
 
   // Handle tapping a product
   const handleProductPress = (product) => {
-    navigation.navigate('ProductDetails', { product });
+    navigation.navigate('ProductDetailsScreen', { product });
   };
-
+  
   // Renders each category item
   const renderCategoryItem = ({ item }) => {
     const isActive = item.type === selectedCategory;

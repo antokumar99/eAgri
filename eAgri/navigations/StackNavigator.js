@@ -28,7 +28,7 @@ import AddressEditScreen from '../screens/AddressEditScreen';
 import PaymentWebView from '../screens/PaymentWebView';
 import SellScreen from '../screens/SellScreen';
 import AddToSellScreen from '../screens/AddToSellScreen';
-
+import EditProfileScreen from '../screens/EditProfileScreen';
 import AdminLogin from '../screens/AdminLogin';
 import AdminRegister from '../screens/AdminRegister';
 import AdminDashboard from '../screens/AdminDashboard';
@@ -178,6 +178,7 @@ const StackNavigator = () => {
         <Stack.Screen name="AdminLogin" component={AdminLogin} />
         <Stack.Screen name="AdminRegister" component={AdminRegister} />
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         <Stack.Screen 
           name="AddressEditScreen" 
           component={AddressEditScreen} 

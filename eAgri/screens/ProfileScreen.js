@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import{
+import {
   View,
   Text,
   TouchableOpacity,
@@ -9,37 +9,63 @@ import{
   SafeAreaView,
   Platform,
   ActivityIndicator,
-  Alert
+  Alert,
+  RefreshControl,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Header from "../components/Header";
-import api from '../services/api';
+import api from "../services/api";
+
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [orderCount, setOrderCount] = useState(0);
   const [favoriteCount, setFavoriteCount] = useState(0);
 
   const menuItems = [
-    { id: 1, label: "Shipping Address", icon: "location-outline", onPress: () => navigation.navigate('ShippingAddress') },
-    { id: 2, label: "Payment Settings", icon: "card-outline", onPress: () => navigation.navigate('PaymentSettings') },
-    { id: 3, label: "Order History", icon: "document-text-outline", onPress: () => navigation.navigate('OrderHistory') },
-    { id: 4, label: "Settings", icon: "settings-outline", onPress: () => navigation.navigate('Settings') },
-    { id: 5, label: "Privacy Policy", icon: "shield-checkmark-outline", onPress: () => navigation.navigate('PrivacyPolicy') },
-    { id: 6, label: "Logout", icon: "log-out-outline", onPress:async()=> {
+    {
+      id: 1,
+      label: "Shipping Address",
+      icon: "location-outline",
+      onPress: () => navigation.navigate("ShippingAddress"),
+    },
+    {
+      id: 2,
+      label: "Edit Profile",
+      icon: "create-outline",
+      onPress: () => navigation.navigate("EditProfile", { userData }),
+    },
+    {
+      id: 3,
+      label: "Order History",
+      icon: "document-text-outline",
+      onPress: () => navigation.navigate("OrderHistory"),
+    },
+    {
+      id: 4,
+      label: "Settings",
+      icon: "settings-outline",
+      onPress: () => navigation.navigate("Settings"),
+    },
+    {
+      id: 5,
+      label: "Logout",
+      icon: "log-out-outline",
+      onPress: async () => {
         try {
-          await AsyncStorage.removeItem('token');
-          console.log('Logged out');
-          navigation.replace('Login');
+          await AsyncStorage.removeItem("token");
+          console.log("Logged out");
+          navigation.replace("Login");
         } catch (error) {
-          console.error('Error logging out:', error);
-          Alert.alert('Error', 'Failed to logout');
+          console.error("Error logging out:", error);
+          Alert.alert("Error", "Failed to logout");
         }
-      }
+      },
     },
   ];
 
@@ -47,22 +73,26 @@ export default function ProfileScreen() {
     fetchUserData();
   }, []);
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    setLoading(true);
+    fetchUserData();
+  };
+
   const fetchUserData = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await AsyncStorage.getItem("token");
       if (!token) {
-        navigation.replace('Login');
+        navigation.replace("Login");
         return;
       }
 
-      const response = await api.get('/profile', {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await api.get("/profile", {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      
       setUserData(response.data);
-      console.log(userData);
-      
+
       // Fetch order count
       // const ordersResponse = await api.get('/api/orders/count', {
       //   headers: { Authorization: `Bearer ${token}` }
@@ -74,10 +104,9 @@ export default function ProfileScreen() {
       //   headers: { Authorization: `Bearer ${token}` }
       // });
       // setFavoriteCount(favoritesResponse.data.count);
-
     } catch (error) {
-      console.error('Error fetching user data:', error);
-      Alert.alert('Error', 'Failed to load profile data');
+      console.error("Error fetching user data:", error);
+      Alert.alert("Error", "Failed to load profile data");
     } finally {
       setLoading(false);
     }
@@ -85,12 +114,12 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('token');
-      console.log('Logged out');
-      navigation.replace('Login');
+      await AsyncStorage.removeItem("token");
+      console.log("Logged out");
+      navigation.replace("Login");
     } catch (error) {
-      console.error('Error logging out:', error);
-      Alert.alert('Error', 'Failed to logout');
+      console.error("Error logging out:", error);
+      Alert.alert("Error", "Failed to logout");
     }
   };
 
@@ -115,21 +144,21 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header title="My Profile" />
-      
+
       {/* Profile Info */}
       <View style={styles.profileInfo}>
         {userData?.photo ? (
-          <Image 
-            source={{ uri: userData.photo }} 
-            style={styles.avatar}
-          />
+          <Image source={{ uri: userData.photo }} style={styles.avatar} />
         ) : (
           <View style={styles.avatar}>
-            <Image source={require('../assets/avatar.png')} style={{ width: 60, height: 60 }} />
+            <Image
+              source={require("../assets/avatar.png")}
+              style={{ width: 60, height: 60 }}
+            />
             {/* <Icon name="person-outline" size={40} color="#555" /> */}
           </View>
         )}
-        
+
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{favoriteCount}</Text>
@@ -140,7 +169,7 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>Orders</Text>
           </View>
         </View>
-        
+
         <Text style={styles.profileName}>{userData?.data?.name}</Text>
         <View style={styles.locationContainer}>
           <Icon name="location-outline" size={16} color="#555" />
@@ -165,6 +194,9 @@ export default function ProfileScreen() {
         renderItem={renderMenuItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.menuList}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       />
     </SafeAreaView>
   );
@@ -199,9 +231,9 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 10,
   },
   statsContainer: {
@@ -260,22 +292,22 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-   justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
   farmInfo: {
     marginTop: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   farmTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#2ecc71',
+    fontWeight: "600",
+    color: "#2ecc71",
   },
   farmExperience: {
     fontSize: 14,
-    color: '#777',
+    color: "#777",
     marginTop: 2,
   },
 });
