@@ -196,6 +196,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f9f9f9",
+    paddingTop: Platform.OS === "android" ? 40 : 0,
   },
   safeArea: {
     backgroundColor: "#4caf50",
