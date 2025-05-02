@@ -37,38 +37,58 @@
 // middleware/authMiddleware.js
 
 const jwt = require('jsonwebtoken');
-require('dotenv').config(); // So that we can access process.env.JWT_SECRET
+require('dotenv').config();
 
-module.exports = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-
-  // Typically the token is passed as: Authorization: Bearer <token>
-  if (!authHeader) {
-    return res.status(401).json({
-      success: false,
-      message: 'No token provided'
-    });
-  }
-
-  const token = authHeader.split(' ')[1]; // 'Bearer <token>' => <token>
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Token missing'
-    });
-  }
-
+const authMiddleware = async (req, res, next) => {
   try {
-    // Verify the token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Request Headers:', req.headers);
+    console.log('Content-Type:', req.headers['content-type']);
+    const authHeader = req.headers.authorization;
+    console.log('Auth Header:', authHeader);
 
-    // Attach the decoded payload (user data) to req.user for further use
-    req.user = decoded;
-    next();
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('Invalid auth header format');
+      return res.status(401).json({
+        success: false,
+        error: 'Authorization header must start with Bearer'
+      });
+    }
+
+    const token = authHeader.split(' ')[1];
+    console.log('Extracted token:', token);
+
+    try {
+      console.log('JWT Secret:', process.env.JWT_SECRET); // Be careful with this in production
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Decoded token:', decoded);
+      
+      // Add more user verification here
+      if (!decoded.id) {
+        console.log('Token missing user ID');
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid token format'
+        });
+      }
+
+      // Add user to request
+      req.user = decoded;
+      console.log('User set in request:', req.user);
+      next();
+    } catch (tokenError) {
+      console.log('Token verification failed:', tokenError);
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid or expired token'
+      });
+    }
   } catch (error) {
+    console.error('Auth middleware error:', error);
     return res.status(401).json({
       success: false,
-      message: 'Invalid token'
+      error: 'Authentication failed'
     });
   }
 };
+
+module.exports = authMiddleware;

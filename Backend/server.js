@@ -1,48 +1,62 @@
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
+const path = require('path');
+const fs = require('fs');
 
+// Connect to MongoDB
 connectDB();
+
 const app = express();
-app.use(cors());
-const port = 3000;
 
-app.use(express.json());
-
-
-// Routes Part
-const combinedRoutes = require('./routes/combinedRoutes');
-
-app.use('/', combinedRoutes);
-
-// Error Handling Middleware
-
+// CORS configuration
 app.use(cors({
-  origin: '*', // Be more restrictive in production
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: '*', // In production, specify your actual domain
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
+// Body parser middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Routes
+const combinedRoutes = require('./routes/combinedRoutes');
+app.use('/', combinedRoutes);
+
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('Global error handler:', err);
   res.status(500).json({
-      success: false,
-      message: 'Something broke!',
-      error: err.message
+    success: false,
+    error: err.message || 'Internal server error'
   });
 });
 
-app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`);
+const port = process.env.PORT || 3000;
+
+// Start server only after successful database connection
+const startServer = () => {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+};
+
+// Handle database connection errors
+process.on('unhandledRejection', (err) => {
+  console.error('Database connection error:', err);
+  process.exit(1);
 });
 
-// app.get("/", (req, res) => {
-//   res.send("Hello World!");
-// });
-
-// app.get("/about", (req, res) => {
-//   res.send("About Us");
-// });
+// Start the server
+startServer();
 
 // app.post("/create", (req, res) => {
 //   const { title, description } = req.body;

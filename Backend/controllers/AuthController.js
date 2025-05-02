@@ -332,19 +332,28 @@ module.exports = {
       }
 
       // Generate token
-      const tokenPayload = {
-        id: user._id,
-        email: user.email
-      };
+      const token = jwt.sign(
+        { 
+          id: user._id, 
+          email: user.email 
+        },
+        process.env.JWT_SECRET,
+        { 
+          expiresIn: '24h'
+        }
+      );
 
-      const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
-        expiresIn: '1d' // 1 day token expiration
-      });
+      console.log('Generated token:', token);
 
       return res.status(200).json({
         success: true,
         message: 'Login successful',
-        token
+        token,
+        user: {
+          _id: user._id,
+          email: user.email,
+          name: user.name
+        }
       });
     } catch (error) {
       console.error(error);
