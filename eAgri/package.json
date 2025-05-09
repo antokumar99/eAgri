@@ -30,7 +30,8 @@
     "react-native-reanimated": "^3.16.6",
     "react-native-safe-area-context": "^5.0.0",
     "react-native-screens": "^4.4.0",
-    "react-native-web": "~0.19.13"
+    "react-native-web": "~0.19.13",
+    "expo-file-system": "~18.0.7"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
