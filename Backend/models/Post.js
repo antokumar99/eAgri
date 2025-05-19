@@ -1,32 +1,35 @@
 const mongoose = require('mongoose');
 
 const postSchema = new mongoose.Schema({
-  text: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  image: {
-    type: String,
-    required: false
-  },
-  imagePublicId: {
-    type: String,
-    required: false
-  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
+  text: {
+    type: String,
+    required: true
+  },
+  imagePublicId: {
+    type: String,
+    default: ''
+  },
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
-  createdAt: {
-    type: Date,
-    default: Date.now
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Add virtual for imageUrl
+postSchema.virtual('imageUrl').get(function() {
+  if (this.imagePublicId) {
+    return `https://res.cloudinary.com/dfm7lhrwz/image/upload/${this.imagePublicId}`;
   }
+  return '';
 });
 
 module.exports = mongoose.model('Post', postSchema); 

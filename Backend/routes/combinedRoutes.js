@@ -31,12 +31,12 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024 // Increased to 10MB
+    fileSize: 10 * 1024 * 1024 // 10MB limit
   },
   fileFilter: fileFilter
 }).single('image');
 
-// Wrap multer in error handling
+// Update uploadMiddleware
 const uploadMiddleware = (req, res, next) => {
   upload(req, res, function (err) {
     if (err instanceof multer.MulterError) {
@@ -92,6 +92,7 @@ router.post('/research', ResearchController.addResearch);
 // Post routes
 router.post('/posts', authMiddleware, uploadMiddleware, PostController.createPost);
 router.get('/posts', PostController.getAllPosts);
+router.post('/posts/:postId/like', authMiddleware, PostController.likePost);
 
 // Add this route to test authentication
 router.get('/test-auth', authMiddleware, (req, res) => {
