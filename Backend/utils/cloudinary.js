@@ -29,6 +29,7 @@ const uploadImage = async (imagePath) => {
         { quality: 'auto:good' } // Optimize quality
       ]
     });
+    console.log('Cloudinary upload complete result:', result);
     return {
       url: result.secure_url,
       public_id: result.public_id,

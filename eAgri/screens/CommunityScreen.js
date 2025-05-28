@@ -1,89 +1,166 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   SafeAreaView,
   View,
   Text,
   TextInput,
   FlatList,
-  Button,
   StyleSheet,
   TouchableOpacity,
-  Platform
+  Platform,
+  ActivityIndicator,
+  Image,
+  RefreshControl
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
-import PostCard from "../components/PostCard"; // Import the PostCard component
+import api from "../services/api";
+import Header from "../components/Header";
 
 const CommunityFeed = ({ navigation }) => {
   const [search, setSearch] = useState("");
-  const [posts, setPosts] = useState([
-    {
-      _id: "1",
-      profileImage: "https://via.placeholder.com/40",
-      username: "Jacob Jones",
-      time: "1 hour",
-      content:
-        "How to deal with pests and diseases on certain plants and how to carry out routine maintenance on tractors or other agricultural equipment?",
-      image: "https://via.placeholder.com/400x200",
-      likes: 480,
-      comments: 128,
-      shares: 64,
-    },
-    {
-      _id: "2",
-      profileImage: "https://via.placeholder.com/40",
-      username: "Emily Brown",
-      time: "3 hours",
-      content: "Anyone here knows how to improve soil fertility naturally?",
-      image: null,
-      likes: 320,
-      comments: 45,
-      shares: 21,
-    },
-    {
-      _id: "3",
-      profileImage: "https://via.placeholder.com/40",
-      username: "Michael Johnson",
-      time: "5 hours",
-      content:
-        "What are the best practices for planting and growing crops in a greenhouse?",
-      image: "https://via.placeholder.com/400x200",
-      likes: 640,
-      comments: 96,
-      shares: 32,
-    },
-    {
-      _id: "4",
-      profileImage: "https://via.placeholder.com/40",
-      username: "Emma White",
-      time: "7 hours",
-      content:
-        "I'm looking for advice on how to start a small vegetable garden in my backyard.",
-      image: null,
-      likes: 410,
-      comments: 78,
-      shares: 42,
-    },
-    {
-      _id: "5",
-      profileImage: "https://via.placeholder.com/40",
-      username: "James Lee",
-      time: "9 hours",
-      content:
-        "What are the best ways to protect crops from pests and diseases without using harmful chemicals?",
-      image: "https://via.placeholder.com/400x200",
-      likes: 530,
-      comments: 112,
-      shares: 56,
-    },
-  ]);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [originalPosts, setOriginalPosts] = useState([]); // For search functionality
+  const [refreshing, setRefreshing] = useState(false);
+  const [likedPosts, setLikedPosts] = useState(new Set());
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      const response = await api.get("/posts");
+      //console.log('Full posts response:', response.data);  // to show the post data
+      
+      if (response.data.success) {
+        const postsWithImages = response.data.data.map(post => {
+          //console.log('Full post data:', post);  // to show the post data
+          return post;
+        });
+        setPosts(postsWithImages);
+        setOriginalPosts(postsWithImages);
+      }
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const handleSearch = () => {
-    // Filter posts based on search input
-    const filteredPosts = posts.filter((post) =>
-      post.content.toLowerCase().includes(search.toLowerCase())
+    if (!search.trim()) {
+      setPosts(originalPosts);
+      return;
+    }
+    
+    const filteredPosts = originalPosts.filter((post) =>
+      post.text.toLowerCase().includes(search.toLowerCase())
     );
     setPosts(filteredPosts);
   };
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    fetchPosts();
+  }, []);
+
+  const handleLike = async (postId) => {
+    try {
+      const response = await api.post(`/posts/${postId}/like`);
+      if (response.data.success) {
+        // Update local state
+        setLikedPosts(prev => {
+          const newSet = new Set(prev);
+          if (response.data.data.isLiked) {
+            newSet.add(postId);
+          } else {
+            newSet.delete(postId);
+          }
+          return newSet;
+        });
+        // Refresh posts to get updated like count
+        fetchPosts();
+      }
+    } catch (error) {
+      console.error('Error liking post:', error);
+    }
+  };
+
+  const renderPost = ({ item }) => {
+    const createdAt = new Date(item.createdAt).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+   // console.log('Post data:', item);  // to show the post data
+
+    return (
+      <View style={styles.postCard}>
+        <View style={styles.postHeader}>
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{item.userId?.name || "Anonymous"}</Text>
+            <Text style={styles.postTime}>{createdAt}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.postContent}>{item.text}</Text>
+
+        {item.imageUrl && (
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: item.imageUrl }}
+              style={styles.postImage}
+              resizeMode="cover"
+              onError={(error) => {
+                console.error('Image loading error:', error);
+                console.log('Failed image URL:', item.imageUrl);
+              }}
+            />
+          </View>
+        )}
+
+        <View style={styles.postActions}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => handleLike(item._id)}
+          >
+            <FontAwesome 
+              name={likedPosts.has(item._id) ? "thumbs-up" : "thumbs-o-up"} 
+              size={20} 
+              color={likedPosts.has(item._id) ? "#28a745" : "#666"} 
+            />
+            <Text style={[
+              styles.actionText,
+              likedPosts.has(item._id) && styles.actionTextActive
+            ]}>
+              {item.likes?.length || 0} Likes
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionButton}>
+            <FontAwesome name="comment" size={20} color="#666" />
+            <Text style={styles.actionText}>Comment</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionButton}>
+            <FontAwesome name="share" size={20} color="#666" />
+            <Text style={styles.actionText}>Share</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#28a745" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -106,6 +183,7 @@ const CommunityFeed = ({ navigation }) => {
           placeholder="Search posts..."
           value={search}
           onChangeText={setSearch}
+          onSubmitEditing={handleSearch}
         />
         <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
           <FontAwesome name="search" size={20} color="#fff" />
@@ -115,11 +193,21 @@ const CommunityFeed = ({ navigation }) => {
       {/* Post List */}
       <FlatList
         data={posts}
+        renderItem={renderPost}
         keyExtractor={(item) => item._id}
-        renderItem={({ item }) => <PostCard post={item} />}
-        contentContainerStyle={styles.postList}
+        style={styles.postList}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#28a745"]}
+            tintColor="#28a745"
+          />
+        }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No posts found. Try searching again.</Text>
+          <Text style={styles.emptyText}>
+            {loading ? "Loading posts..." : "No posts found. Try searching again."}
+          </Text>
         }
       />
     </SafeAreaView>
@@ -130,7 +218,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f9fa",
-    // padding: Platform.OS === "ios" ? 16 : 0,
     padding: 16,
     paddingTop: Platform.OS === "android" ? 40 : 0,
   },
@@ -186,6 +273,75 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 16,
     color: "#777",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+  },
+  postCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  userInfo: {
+    flexDirection: "column",
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  postTime: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
+  },
+  postContent: {
+    fontSize: 14,
+    color: "#444",
+    marginVertical: 12,
+    lineHeight: 20,
+  },
+  postImage: {
+    width: '100%',
+    height: '100%',
+  },
+  postActions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    paddingTop: 12,
+    marginTop: 8,
+  },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  actionText: {
+    marginLeft: 8,
+    color: "#666",
+    fontSize: 14,
+  },
+  imageContainer: {
+    width: '100%',
+    height: 200,
+    marginVertical: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
+  },
+  actionTextActive: {
+    color: '#28a745',
+    fontWeight: 'bold',
   },
 });
 

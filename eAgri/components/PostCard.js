@@ -35,7 +35,7 @@ const PostCard = ({ post }) => {
       {/* Footer */}
       <View style={styles.footer}>
         <View style={styles.stats}>
-          <Text style={styles.statItem}>{post.likes} Like</Text>
+          <Text style={styles.statItem}>{post.likes} Upvote</Text>
           <Text style={styles.statItem}>{post.comments} Comment</Text>
           <Text style={styles.statItem}>{post.shares} Share</Text>
         </View>
