@@ -30,7 +30,7 @@ const ResearchScreen = () => {
   const fetchResearchPapers = async () => {
     try {
       const { data } = await api.get('/research');
-      console.log(data); 
+      // console.log(data); 
       setResearchPapers(data);
       setFilteredPapers(data);
       setError('');

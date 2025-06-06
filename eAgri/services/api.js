@@ -14,13 +14,13 @@ api.interceptors.request.use(
   async (config) => {
     try {
       const token = await AsyncStorage.getItem('token');
-      console.log('Token from storage:', token);
+      //console.log('Token from storage:', token);  // to show the token
       
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
       
-      console.log('Final request headers:', config.headers);
+      //console.log('Final request headers:', config.headers);  // to show the headers
       
       return config;
     } catch (error) {

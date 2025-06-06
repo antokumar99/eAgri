@@ -44,49 +44,33 @@ const LoginScreen = () => {
   // };
   const handleLogin = async () => {
     try {
-      const user = {
-        email: email,
-        password: password,
-      };
-  
-      const response = await api.post("/login", user);
-  
-      if (response.status === 200 && response.data.success) { // use if (response.data.success) { if gives error
-        // Login successful
-        Alert.alert("Success", response.data.message || "User logged in.");
-  
-        // Optionally store the token if needed for authentication
-        const token = response.data.token;
-        await AsyncStorage.setItem("token", token); // Save token to AsyncStorage
-  
-        // Reset input fields
-        setEmail("");
-        setPassword("");
-  
-        // Navigate to Home or Main screen
-        navigation.replace("Main");
+      const response = await api.post('/login', {
+        email,
+        password,
+      });
+
+      if (response.data.success) {
+        const { token } = response.data;
+        
+        // Log the token before storing
+        console.log('Received token:', token);
+        
+        // Store the token
+        await AsyncStorage.setItem('token', token);
+        
+        // Verify the token was stored
+        const storedToken = await AsyncStorage.getItem('token');
+        console.log('Stored token:', storedToken);
+        
+        // Navigate to home screen
+        navigation.replace('Main');
       }
     } catch (error) {
-      console.error(error);
-  
-      // Handle specific error codes
-      if (error.response) {
-        if (error.response.status === 403) {
-          Alert.alert("Email Not Verified", error.response.data.message || "Please verify your email before logging in.");
-        } else if (error.response.status === 404) {
-          Alert.alert("User Not Found", error.response.data.message || "User not found. Please check your email and try again.");
-        } else if (error.response.status === 401) {
-          Alert.alert("Incorrect Password", error.response.data.message || "The password you entered is incorrect.");
-        } else {
-          Alert.alert("Error", error.response.data.message || "An unexpected error occurred. Please try again.");
-        }
-      } else {
-        // General error
-        Alert.alert("Error", "Unable to connect to the server. Please try again later.");
-      }
+      console.error('Login error:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Login failed');
     }
   };
-  
+
   const handleForgotPassword = () => {
     console.log("Navigating to Forgot Password screen...");
   };
@@ -286,7 +270,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-
 
 
 
