@@ -329,7 +329,7 @@ const AddPostScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header/>
+      <Header title="Share your thoughts"/>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
