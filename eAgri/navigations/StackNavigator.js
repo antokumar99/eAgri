@@ -32,6 +32,7 @@ import EditProfileScreen from '../screens/EditProfileScreen';
 import AdminLogin from '../screens/AdminLogin';
 import AdminRegister from '../screens/AdminRegister';
 import AdminDashboard from '../screens/AdminDashboard';
+import UpdatePostScreen from '../screens/UpdatePostScreen';
 
 
 const StackNavigator = () => {
@@ -179,6 +180,7 @@ const StackNavigator = () => {
         <Stack.Screen name="AdminRegister" component={AdminRegister} />
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+        <Stack.Screen name="UpdatePostScreen" component={UpdatePostScreen} />
         <Stack.Screen 
           name="AddressEditScreen" 
           component={AddressEditScreen} 
