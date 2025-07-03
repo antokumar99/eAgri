@@ -1,5 +1,5 @@
 const Post = require('../models/Post');
-const { uploadImage } = require('../utils/cloudinary');
+const { uploadImage, deleteImage } = require('../utils/cloudinary');
 const fs = require('fs');
 
 exports.createPost = async (req, res) => {
@@ -170,6 +170,144 @@ exports.likePost = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error updating like'
+    });
+  }
+};
+
+exports.getUserPosts = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const posts = await Post.find({ userId })
+      .sort({ createdAt: -1 })
+      .populate('userId', 'name email')
+      .exec();
+
+    const postsWithUrls = posts.map(post => post.toJSON());
+
+    res.status(200).json({
+      success: true,
+      data: postsWithUrls
+    });
+  } catch (error) {
+    console.error('Error fetching user posts:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching user posts'
+    });
+  }
+};
+
+exports.updatePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId);
+    
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        error: 'Post not found'
+      });
+    }
+
+    if (post.userId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to update this post'
+      });
+    }
+
+    // Handle image update
+    let imagePublicId = post.imagePublicId;
+
+    if (req.file) {
+      // Delete old image if exists
+      if (post.imagePublicId) {
+        try {
+          await deleteImage(post.imagePublicId);
+        } catch (error) {
+          console.error('Error deleting old image:', error);
+        }
+      }
+
+      // Upload new image
+      const uploadResult = await uploadImage(req.file.path);
+      imagePublicId = uploadResult.public_id;
+
+      // Delete temporary file
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error('Error deleting temp file:', err);
+      });
+    } else if (req.body.originalImageId === '') {
+      // If originalImageId is empty string, user wants to remove image
+      if (post.imagePublicId) {
+        try {
+          await deleteImage(post.imagePublicId);
+        } catch (error) {
+          console.error('Error deleting old image:', error);
+        }
+      }
+      imagePublicId = '';
+    }
+
+    const updatedPost = await Post.findByIdAndUpdate(
+      req.params.postId,
+      { 
+        text: req.body.text,
+        imagePublicId
+      },
+      { new: true }
+    ).populate('userId', 'name email');
+
+    res.status(200).json({
+      success: true,
+      data: updatedPost
+    });
+  } catch (error) {
+    console.error('Error updating post:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error updating post'
+    });
+  }
+};
+
+exports.deletePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId);
+    
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        error: 'Post not found'
+      });
+    }
+
+    if (post.userId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to delete this post'
+      });
+    }
+
+    // Delete image from Cloudinary if exists
+    if (post.imagePublicId) {
+      try {
+        await deleteImage(post.imagePublicId);
+      } catch (cloudinaryError) {
+        console.error('Error deleting image from Cloudinary:', cloudinaryError);
+      }
+    }
+
+    await Post.findByIdAndDelete(req.params.postId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Post deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error in deletePost:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error deleting post'
     });
   }
 }; 
