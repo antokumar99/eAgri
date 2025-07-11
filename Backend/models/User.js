@@ -51,6 +51,10 @@ const userSchema = new mongoose.Schema({
             min: 0
         }
     },
+    orders: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Order'
+    }],
     verified: {
         type: Boolean,
         default: false

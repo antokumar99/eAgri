@@ -1,78 +1,23 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const AuthController = require('../controllers/AuthController');
-const UserController = require('../controllers/UserController');
-const ResearchController = require('../controllers/ResearchController');
-const authMiddleware = require('../middleware/authMiddleware');
-const adminController = require('../controllers/AdminController');
-const multer = require('multer');
-const path = require('path');
-const PostController = require('../controllers/PostController');
+const AuthController = require("../controllers/AuthController");
+const UserController = require("../controllers/UserController");
+const ResearchController = require("../controllers/ResearchController");
+const authMiddleware = require("../middleware/authMiddleware");
+const adminController = require("../controllers/AdminController");
+const multer = require("multer");
+const path = require("path");
+const PostController = require("../controllers/PostController");
+const { productController } = require("../controllers/ProductController");
+//const rentalController = require("../controllers/RentalController");
+const { orderController } = require("../controllers/OrderController");
 
-// Configure multer for file upload
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const fileFilter = (req, file, cb) => {
-  // Accept images only
-  if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-    return cb(new Error('Only image files are allowed!'), false);
-  }
-  cb(null, true);
-};
-
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  },
-  fileFilter: fileFilter
-}).single('image');
-
-// Update uploadMiddleware
-const uploadMiddleware = (req, res, next) => {
-  upload(req, res, function (err) {
-    if (err instanceof multer.MulterError) {
-      console.error('Multer error:', err);
-      if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({
-          success: false,
-          error: 'Image file size should be less than 10MB'
-        });
-      }
-      return res.status(400).json({
-        success: false,
-        error: `Upload error: ${err.message}`
-      });
-    } else if (err) {
-      console.error('Unknown error:', err);
-      return res.status(500).json({
-        success: false,
-        error: `Upload error: ${err.message}`
-      });
-    }
-    next();
-  });
-};
-
-// Make sure uploads directory exists
-const fs = require('fs');
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads');
-}
 
 // Authentication routes
-router.post('/login', AuthController.login);
-router.post('/register', AuthController.register);
-router.get('/verify-email/:token', AuthController.verifyEmail);
-router.post('/resend-verification', AuthController.resendVerification);
+router.post("/login", AuthController.login);
+router.post("/register", AuthController.register);
+router.get("/verify-email/:token", AuthController.verifyEmail);
+router.post("/resend-verification", AuthController.resendVerification);
 // router.get('/verify-email/:token', AuthController.verifyEmail);
 
 // Admin routes
@@ -82,27 +27,83 @@ router.post('/resend-verification', AuthController.resendVerification);
 
 // User routes
 // router.get('/profile', UserController.getProfile);
-router.get('/profile', authMiddleware, UserController.getProfile);
-router.put('/profile', authMiddleware, UserController.updateProfile);             
+router.get("/profile", authMiddleware, UserController.getProfile);
+router.put("/profile", authMiddleware, UserController.updateProfile);
 
 // Research routes
-router.get('/research', ResearchController.getAllResearch);
-router.post('/research', ResearchController.addResearch);
+router.get("/research", ResearchController.getAllResearch);
+router.post("/research", ResearchController.addResearch);
 
 // Post routes
-router.post('/posts', authMiddleware, uploadMiddleware, PostController.createPost);
-router.get('/posts', PostController.getAllPosts);
-router.post('/posts/:postId/like', authMiddleware, PostController.likePost);
+router.post(
+  "/posts",
+  authMiddleware,
+  uploadMiddleware,
+  PostController.createPost
+);
+router.get("/posts", PostController.getAllPosts);
+router.post("/posts/:postId/like", authMiddleware, PostController.likePost);
+
+// Product routes
+router.get(
+  "/products/my-products",
+  authMiddleware,
+  productController.getMyProducts
+);
+
+router.post(
+  "/addproducts",
+  authMiddleware,
+  productUpload,
+  productController.createProduct
+);
+
+router.get("/products", productController.getAllProducts);
+
+router.get("/products/:id", productController.getProductById);
+router.put(
+  "/products/:id",
+  authMiddleware,
+  productUpload,
+  productController.updateProduct
+);
+router.delete("/products/:id", authMiddleware, productController.deleteProduct);
+router.post(
+  "/products/:id/review",
+  authMiddleware,
+  productController.addProductReview
+);
+
+// Cart routes
+router.post("/cart/add", authMiddleware, orderController.addToCart);
+router.get("/cart", authMiddleware, orderController.getCart);
+router.put(
+  "/cart/item/:itemId",
+  authMiddleware,
+  orderController.updateCartItem
+);
+router.delete(
+  "/cart/item/:itemId",
+  authMiddleware,
+  orderController.removeFromCart
+);
+router.delete("/cart", authMiddleware, orderController.clearCart);
 
 // Add this route to test authentication
-router.get('/test-auth', authMiddleware, (req, res) => {
-  console.log('Test auth endpoint hit');
-  console.log('User from request:', req.user);
+router.get("/test-auth", authMiddleware, (req, res) => {
+  console.log("Test auth endpoint hit");
+  console.log("User from request:", req.user);
   res.json({
     success: true,
-    message: 'Authentication successful',
-    user: req.user
+    message: "Authentication successful",
+    user: req.user,
   });
 });
+
+// Rental routes
+// router.post("/rentals", authMiddleware, rentalController.createRental);
+// router.get("/rentals/user", authMiddleware, rentalController.getUserRentals);
+// router.put("/rentals/:rentalId/complete", authMiddleware, rentalController.completeRental);
+// router.put("/rentals/:rentalId/extend", authMiddleware, rentalController.extendRental);
 
 module.exports = router;
