@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ActivityIndicator  } from "react-native";
+import { StyleSheet, Text, View, ActivityIndicator } from "react-native";
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
@@ -24,15 +24,17 @@ import BuyScreen from "../screens/BuyScreen";
 import ProductDetailsScreen from "../screens/ProductDetailsScreen";
 import ResearchScreen from "../screens/ResearchScreen";
 import ForumScreen from "../screens/ForumScreen";
-import AddressEditScreen from '../screens/AddressEditScreen';
-import PaymentWebView from '../screens/PaymentWebView';
-import SellScreen from '../screens/SellScreen';
-import AddToSellScreen from '../screens/AddToSellScreen';
-import EditProfileScreen from '../screens/EditProfileScreen';
-import AdminLogin from '../screens/AdminLogin';
-import AdminRegister from '../screens/AdminRegister';
-import AdminDashboard from '../screens/AdminDashboard';
-
+import AddressEditScreen from "../screens/AddressEditScreen";
+import PaymentWebView from "../screens/PaymentWebView";
+import SellScreen from "../screens/SellScreen";
+import EditProfileScreen from "../screens/EditProfileScreen";
+import AdminLogin from "../screens/AdminLogin";
+import AdminRegister from "../screens/AdminRegister";
+import AdminDashboard from "../screens/AdminDashboard";
+import CartScreen from "../screens/CartScreen";
+import CheckoutScreen from "../screens/CheckoutScreen";
+import AddProductScreen from "../screens/AddProductScreen";
+import EditProductScreen from "../screens/EditProductScreen";
 
 const StackNavigator = () => {
   const Stack = createStackNavigator();
@@ -170,7 +172,10 @@ const StackNavigator = () => {
         <Stack.Screen name="AddPostScreen" component={AddPostScreen} />
         <Stack.Screen name="BuyScreen" component={BuyScreen} />
         <Stack.Screen name="RentScreen" component={RentScreen} />
-        <Stack.Screen name="ProductDetailsScreen" component={ProductDetailsScreen} />
+        <Stack.Screen
+          name="ProductDetailsScreen"
+          component={ProductDetailsScreen}
+        />
         <Stack.Screen name="ResearchScreen" component={ResearchScreen} />
         <Stack.Screen name="ForumScreen" component={ForumScreen} />
         <Stack.Screen name="PaymentWebView" component={PaymentWebView} />
@@ -179,13 +184,17 @@ const StackNavigator = () => {
         <Stack.Screen name="AdminRegister" component={AdminRegister} />
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-        <Stack.Screen 
-          name="AddressEditScreen" 
-          component={AddressEditScreen} 
-          options={{ headerShown: false }} 
+        <Stack.Screen
+          name="AddressEditScreen"
+          component={AddressEditScreen}
+          options={{ headerShown: false }}
         />
         <Stack.Screen name="SellScreen" component={SellScreen} />
-        <Stack.Screen name="AddToSellScreen" component={AddToSellScreen} />
+        <Stack.Screen name="Cart" component={CartScreen} />
+        <Stack.Screen name="Checkout" component={CheckoutScreen} />
+        <Stack.Screen name="AddProduct" component={AddProductScreen} />
+        <Stack.Screen name="EditProduct" component={EditProductScreen} />
+        <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

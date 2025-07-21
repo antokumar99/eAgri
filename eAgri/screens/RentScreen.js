@@ -1,521 +1,247 @@
-// import React from "react";
-// import {
-//   View,
-//   Text,
-//   StyleSheet,
-//   ScrollView,
-//   TextInput,
-//   Image,
-//   TouchableOpacity,
-//   SafeAreaView,
-//   Platform
-// } from "react-native";
-// import { AntDesign } from "@expo/vector-icons";
-// import RentItem from "../components/RentItem";
-// import CategoryCard from "../components/CategoryCard";
-// import { useNavigation } from "@react-navigation/native";
-// import Header from "../components/Header";
-
-// export default function RentScreen() {
-//   const navigation = useNavigation();
-//   const rentItem = [
-//     {
-//       id: 1,
-//       title: "Auto",
-//       owner: "মালিক: HOSSAIN ALI",
-//       location: "📍 Mithap",
-//       price: "৳ ৮,০০০/Day",
-//       image: "https://via.placeholder.com/150",
-//     },
-//     {
-//       id: 2,
-//       title: "Auto",
-//       owner: "মালিক: HOSSAIN ALI",
-//       location: "📍 Mithap",
-//       price: "৳ ৮,০০০/Day",
-//       image: "https://via.placeholder.com/150",
-//     },
-//     {
-//       id: 3,
-//       title: "Auto",
-//       owner: "মালিক: HOSSAIN ALI",
-//       location: "📍 Mithap",
-//       price: "৳ ৮,০০০/Day",
-//       image: "https://via.placeholder.com/150",
-//     },
-//     {
-//       id: 4,
-//       title: "Auto",
-//       owner: "মালিক: HOSSAIN ALI",
-//       location: "📍 Mithap",
-//       price: "৳ ৮,০০০/Day",
-//       image: "https://via.placeholder.com/150",
-//     },
-//     {
-//       id: 5,
-//       title: "Auto",
-//       owner: "মালিক: HOSSAIN ALI",
-//       location: "📍 Mithap",
-//       price: "৳ ৮,০০০/Day",
-//       image: "https://via.placeholder.com/150",
-//     },
-//   ];
-
-//   const category = [
-//     {
-//       id: 1,
-//       title: "Agricultural Crops",
-//       image: "https://via.placeholder.com/100",
-//     },
-//     {
-//       id: 2,
-//       title: "Field Operations",
-//       image: "https://via.placeholder.com/100",
-//     },
-//     {
-//       id: 3,
-//       title: "Harvesting",
-//       image: "https://via.placeholder.com/100",
-//     },
-//     {
-//       id: 4,
-//       title: "Irrigation",
-//       image: "https://via.placeholder.com/100",
-//     },
-//   ];
-
-//   return (
-//     <SafeAreaView style={styles.container}>
-//       {/* <Header/> */}
-//       <View style={styles.header}>
-//         <TouchableOpacity onPress={() => navigation.goBack()}>
-//           <AntDesign name="back" size={24} color="#555" />
-//         </TouchableOpacity>
-//         <Text style={styles.title}>Rent</Text>
-//       </View>
-//       {/* Top Section: Horizontal ScrollView */}
-//       <ScrollView
-//         horizontal
-//         showsHorizontalScrollIndicatorIndicator={false}
-//         style={styles.horizontalScrollView}
-//       >
-//         <View style={styles.upperSection}>
-//           {category.map((category) => (
-//             <CategoryCard key={category.id} category={category} />
-//           ))}
-//         </View>
-
-//       </ScrollView>
-
-//       {/* Search Bar */}
-//       <View style={styles.searchBarContainer}>
-//         <TextInput
-//           style={styles.searchInput}
-//           placeholder="অনুসন্ধান"
-//           placeholderTextColor="#888"
-//         />
-//       </View>
-
-
-//       {/* Bottom Section: Vertical ScrollView */}
-//       <ScrollView style={styles.verticalScrollView}>
-//         {rentItem.map((rentItem) => (
-//           <RentItem key={rentItem.id} rentItem={rentItem} />
-//         ))}
-//       </ScrollView>
-//     </SafeAreaView>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: "#F5F5F5",
-//   },
-//   header: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     paddingHorizontal: 20,
-//     paddingVertical: 10,
-//     backgroundColor: "#F5F5F5",
-//     elevation: 2,
-//     paddingTop: Platform.OS === "android" ? 40 : 0,
-//   },
-//   title: {
-//     fontSize: 18,
-//     fontWeight: "bold",
-//     color: "#555",
-//     marginLeft: 130,
-//   },
-//   upperSection: {
-//     flexDirection: "row",
-//     borderBottomWidth: 1,
-//     borderBottomColor: "#CCC",
-//     marginBottom: 10,
-//     height: 230,
-//     padding: 10,
-//   },
-//   horizontalScrollView: {
-//     marginVertical: 5,
-//   },
-//   categoryCard: {
-//     alignItems: "center",
-//     marginRight: 20,
-//   },
-//   categoryImage: {
-//     width: 100,
-//     height: 100,
-//     borderRadius: 35,
-//     marginBottom: 5,
-//   },
-//   categoryText: {
-//     fontSize: 12,
-//     textAlign: "center",
-//     color: "#333",
-//   },
-//   searchBarContainer: {
-//     marginVertical: 10,
-//   },
-//   searchInput: {
-//     backgroundColor: "#FFFFFF",
-//     padding: 10,
-//     borderRadius: 25,
-//     borderWidth: 1,
-//     borderColor: "#CCC",
-//     fontSize: 16,
-//     color: "#333",
-//   },
-//   verticalScrollView: {
-//     marginVertical: 1,
-//     padding: 10,
-//   },
-// });
-
-
-import React, { useState } from 'react';
-import Icon from 'react-native-vector-icons/Ionicons'; 
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  Image,
+  StyleSheet,
   FlatList,
+  Image,
   TouchableOpacity,
   TextInput,
-  StyleSheet,
-  StatusBar,
+  ActivityIndicator,
   Platform,
-  SafeAreaView
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import Header from '../components/Header';
+  RefreshControl,
+  SafeAreaView,
+} from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import api from "../services/api";
+import Header from "../components/Header";
 
-const CATEGORIES = [
-  {
-    id: 1,
-    name: 'All products',
-    type: 'all',
-    image: require('../assets/harvestor.jpg'), // Use tractor.jpg here
-  },
-  {
-    id: 2,
-    name: 'Agricultural Crops',
-    type: 'crops',
-    image: require('../assets/harvestor.jpg'), // Use tractor.jpg here
-  },
-  {
-    id: 3,
-    name: 'Field Operations',
-    type: 'field',
-    image: require('../assets/harvestor.jpg'),
-  },
-  {
-    id: 4,
-    name: 'Others',
-    type: 'other',
-    image: require('../assets/harvestor.jpg'),
-  },
-];
+const RentScreen = ({ navigation }) => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
-// Sample products (you can replace with your fetched data)
-const PRODUCTS = [
-  {
-    id: 101,
-    name: 'm8 head light',
-    seller: 'Rubel sk',
-    location: 'রায়গঞ্জ',
-    type: 'other',
-    price: '৳৮৫০',
-    image: require('../assets/harvestor.jpg'),
-  },
-  {
-    id: 102,
-    name: 'Lichu',
-    seller: 'Md. Momjurul Islam',
-    location: 'khanpur Mithapukur',
-    type: 'other',
-    price: '৳২০,০০০',
-    image: require('../assets/harvestor.jpg'),
-  },
-  {
-    id: 103,
-    name: 'Wheat Seeds',
-    seller: 'Farmer A',
-    location: 'Rangpur',
-    type: 'crops',
-    price: '৳১,২০০',
-    image: require('../assets/harvestor.jpg'),
-  },
-  {
-    id: 104,
-    name: 'extractor',
-    seller: 'anto sk',
-    location: 'রায়গঞ্জ',
-    type: 'field',
-    price: '৳৮৫০',
-    image: require('../assets/harvestor.jpg'),
-  },
-  {
-    id: 105,
-    name: 'Mango',
-    seller: 'Md. hafizur Islam',
-    location: 'khanpur Mithapukur',
-    type: 'crops',
-    price: '৳২০,০০০',
-    image: require('../assets/harvestor.jpg'),
-  },
-  {
-    id: 106,
-    name: 'Rice Seeds',
-    seller: 'Farmer Abdur',
-    location: 'Rangpur',
-    type: 'crops',
-    price: '৳১,২০০',
-    image: require('../assets/harvestor.jpg'),
-  },
-];
+  const categories = [
+    "all",
+    "Seeds",
+    "Fertilizers",
+    "Pesticides",
+    "Tools",
+    "Machinery",
+  ];
 
+  useEffect(() => {
+    fetchProducts();
+  }, [selectedCategory]);
 
-const BuyScreen = () => {
-  const navigation = useNavigation();
-
-  // State to track selected category & search query
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredProducts, setFilteredProducts] = useState(PRODUCTS);
-
-  // Filter products based on search query
-  const handleSearch = () => {
-    const filtered = PRODUCTS.filter((product) => {
-      const matchCategory =
-        selectedCategory === 'all' || product.type === selectedCategory;
-      const matchSearch =
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.type.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchCategory && matchSearch;
-    });
-
-    setFilteredProducts(filtered);
+  const fetchProducts = async () => {
+    try {
+      const response = await api.get("/products", {
+        params: {
+          type: ["Rent", "both"],
+          category: selectedCategory !== "all" ? selectedCategory : undefined,
+        },
+      });
+      setProducts(response.data.products);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  // Handle clearing the search input
-  const handleClearSearch = () => {
-    setSearchQuery('');
-    setFilteredProducts(PRODUCTS); // Reset to all products
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchProducts();
   };
 
-  // Handle tapping a category
-  const handleCategoryPress = (type) => {
-    setSelectedCategory(type);
-    const filtered = PRODUCTS.filter(
-      (product) => type === 'all' || product.type === type
-    );
-    setFilteredProducts(filtered);
-  };
-
-  // Handle tapping a product
-  const handleProductPress = (product) => {
-    navigation.navigate('ProductDetailsScreen', { product });
-  };
-  
-  // Renders each category item
-  const renderCategoryItem = ({ item }) => {
-    const isActive = item.type === selectedCategory;
-    return (
-      <TouchableOpacity
-        style={[
-          styles.categoryItem,
-          isActive && styles.categoryItemSelected
-        ]}
-        onPress={() => handleCategoryPress(item.type)}
-      >
-        <Image source={item.image} style={styles.categoryImage} />
-        <Text style={styles.categoryText}>{item.name}</Text>
-      </TouchableOpacity>
-    );
-  };
-
-  // Renders each product card
-  const renderProductItem = ({ item }) => (
+  const renderProduct = ({ item }) => (
     <TouchableOpacity
       style={styles.productCard}
-      onPress={() => handleProductPress(item)}
+      onPress={() => navigation.navigate("ProductDetails", { product: item })}
     >
-      <View style={styles.imageHolder}>
-        <Image source={item.image} style={styles.productImage} />
-      </View>
+      <Image source={{ uri: item.image }} style={styles.productImage} />
       <View style={styles.productInfo}>
         <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productSeller}>{item.seller}</Text>
-        <Text style={styles.productLocation}>{item.location}</Text>
-        <Text style={styles.productType}>{item.type}</Text>
-        <Text style={styles.productPrice}>{item.price}</Text>
+        <Text style={styles.productCategory}>{item.category}</Text>
+        <Text style={styles.productPrice}>৳{item.price}</Text>
+        <View style={styles.ratingContainer}>
+          <MaterialIcons name="star" size={16} color="#FFD700" />
+          <Text style={styles.ratingText}>
+            {item.averageRating?.toFixed(1) || "New"} (
+            {item.ratings?.length || 0})
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
 
+  const filteredProducts = products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <Header title = "Buy Products" /> 
-      {/* Categories Section */}
-      <View style={styles.categoryContainer}>
-        <FlatList
-          horizontal
-          data={CATEGORIES}
-          renderItem={renderCategoryItem}
-          keyExtractor={item => item.id.toString()}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-        />
-      </View>
-
-      {/* Search Bar */}
+      <Header title="Rent Products" />
       <View style={styles.searchContainer}>
+        <MaterialIcons name="search" size={24} color="#666" />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search Products"
+          placeholder="Search products..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch} // Trigger search on keyboard enter
         />
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Icon name="search" size={20} color="green" marginRight={15} />
-        </TouchableOpacity>
-        {searchQuery.trim().length > 0 && (
-          <TouchableOpacity onPress={handleClearSearch}>
-            <Icon name="close-circle" size={20} color="gray" />
-          </TouchableOpacity>
-        )}
       </View>
 
-      {/* Products List */}
-      <FlatList
-        data={filteredProducts}
-        renderItem={renderProductItem}
-        keyExtractor={item => item.id.toString()}
-        contentContainerStyle={styles.productListContainer}
-      />
+      <View style={styles.categoriesContainer}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={categories}
+          keyExtractor={(item) => item}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.categoryButton,
+                selectedCategory === item && styles.selectedCategory,
+              ]}
+              onPress={() => setSelectedCategory(item)}
+            >
+              <Text
+                style={[
+                  styles.categoryText,
+                  selectedCategory === item && styles.selectedCategoryText,
+                ]}
+              >
+                {item.charAt(0).toUpperCase() + item.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+
+      {loading ? (
+        <ActivityIndicator size="large" color="#008E97" style={styles.loader} />
+      ) : (
+        <FlatList
+          data={filteredProducts}
+          renderItem={renderProduct}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.productList}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No products found</Text>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
 
-export default BuyScreen;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: Platform.OS === "android" ? 40 : 0, 
+    backgroundColor: "#f5f5f5",
+    paddingTop: Platform.OS === "android" ? 40 : 0,
   },
-  // ----- Categories -----
-  categoryContainer: {
-    marginTop: 8,
-  },
-  categoryItem: {
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  categoryItemSelected: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#00b1ff',
-  },
-  categoryImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 8,
-    resizeMode: 'cover',
-  },
-  categoryText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#333',
-  },
-  // ----- Search Bar -----
   searchContainer: {
-    margin: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'green',
-    borderRadius: 24,
-    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    margin: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
-    height: 40,
-    fontSize: 14,
-   
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    fontSize: 16,
   },
-  // ----- Products List -----
-  productListContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+  categoriesContainer: {
+    paddingVertical: 10,
+  },
+  categoryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    marginHorizontal: 5,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    elevation: 2,
+  },
+  selectedCategory: {
+    backgroundColor: "#008E97",
+  },
+  categoryText: {
+    color: "#666",
+    fontSize: 14,
+  },
+  selectedCategoryText: {
+    color: "#fff",
+  },
+  productList: {
+    padding: 10,
   },
   productCard: {
-    flexDirection: 'row',
-    backgroundColor: '#f5f5f5',
+    flexDirection: "row",
+    backgroundColor: "#fff",
     borderRadius: 8,
-    marginBottom: 16,
-    overflow: 'hidden',
-    height: 140,
-  },
-  imageHolder:{
-    justifyContent: 'center',
-    marginLeft: 20,
-    marginRight : 35,
+    marginBottom: 10,
+    elevation: 2,
+    overflow: "hidden",
   },
   productImage: {
     width: 120,
-    height: 125,
-    resizeMode: 'cover',
+    height: 120,
+    resizeMode: "cover",
   },
   productInfo: {
     flex: 1,
-    padding: 8,
-    justifyContent: 'center',
+    padding: 10,
   },
   productName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 2,
+    fontWeight: "bold",
+    marginBottom: 4,
   },
-  productSeller: {
+  productCategory: {
+    color: "#666",
     fontSize: 14,
-    color: '#666',
-    marginBottom: 2,
-  },
-  productLocation: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 2,
-  },
-  productType: {
-    fontSize: 14,
-    color: '#444',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   productPrice: {
     fontSize: 16,
-    color: '#00b1ff',
-    marginTop: 4,
+    color: "#008E97",
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  ratingText: {
+    marginLeft: 4,
+    color: "#666",
+  },
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyText: {
+    textAlign: "center",
+    fontSize: 16,
+    color: "#666",
+    marginTop: 20,
   },
 });
+
+export default RentScreen;

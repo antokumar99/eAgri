@@ -30,9 +30,9 @@ export default function ProfileScreen() {
   const menuItems = [
     {
       id: 1,
-      label: "Shipping Address",
-      icon: "location-outline",
-      onPress: () => navigation.navigate("ShippingAddress"),
+      label: "Cart",
+      icon: "cart",
+      onPress: () => navigation.navigate("Cart"),
     },
     {
       id: 2,

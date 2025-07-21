@@ -11,6 +11,8 @@ import {
   Alert,
   SafeAreaView,
   ActivityIndicator,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
@@ -335,47 +337,51 @@ const AddPostScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={80}
       >
-        <Text style={styles.header}>Create a Post</Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.container}>
+            <Text style={styles.header}>Create a Post</Text>
 
-        <TextInput
-          style={styles.textInput}
-          placeholder="Share your thoughts..."
-          multiline
-          value={postText}
-          onChangeText={setPostText}
-        />
+            <TextInput
+              style={styles.textInput}
+              placeholder="Share your thoughts..."
+              multiline
+              value={postText}
+              onChangeText={setPostText}
+            />
 
-        <ImagePreview />
+            <ImagePreview />
 
-        <TouchableOpacity 
-          style={styles.imageButton} 
-          onPress={pickImage}
-        >
-          <Text style={styles.imageButtonText}>
-            {postImage ? 'Change Image' : 'Pick an Image'}
-          </Text>
-        </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.imageButton} 
+              onPress={pickImage}
+            >
+              <Text style={styles.imageButtonText}>
+                {postImage ? 'Change Image' : 'Pick an Image'}
+              </Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.postButton, isPosting && styles.disabledButton]}
-          onPress={handlePost}
-          disabled={isPosting}
-        >
-          {isPosting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.postButtonText}>Post</Text>
-          )}
-        </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.postButton, isPosting && styles.disabledButton]}
+              onPress={handlePost}
+              disabled={isPosting}
+            >
+              {isPosting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.postButtonText}>Post</Text>
+              )}
+            </TouchableOpacity>
 
-        {isPosting && (
-          <View style={styles.progressContainer}>
-            <ActivityIndicator color="#32CD32" />
-            <Text style={styles.progressText}>
-              {uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : 'Processing...'}
-            </Text>
+            {isPosting && (
+              <View style={styles.progressContainer}>
+                <ActivityIndicator color="#32CD32" />
+                <Text style={styles.progressText}>
+                  {uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : 'Processing...'}
+                </Text>
+              </View>
+            )}
           </View>
-        )}
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
