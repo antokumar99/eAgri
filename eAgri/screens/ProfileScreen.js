@@ -5,12 +5,16 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
-  FlatList,
   SafeAreaView,
   Platform,
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
+  Easing,
+  ScrollView,
   RefreshControl,
+  Modal,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
@@ -18,14 +22,19 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Header from "../components/Header";
 import api from "../services/api";
 
+const { width, height } = Dimensions.get('window');
+const DRAWER_WIDTH = width * 0.8;
+const drawerAnimation = new Animated.Value(0);
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [userPosts, setUserPosts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [orderCount, setOrderCount] = useState(0);
-  const [favoriteCount, setFavoriteCount] = useState(0);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [showOptions, setShowOptions] = useState(false);
 
   const menuItems = [
     {
@@ -69,15 +78,31 @@ export default function ProfileScreen() {
     },
   ];
 
+  const toggleDrawer = () => {
+    const toValue = isDrawerOpen ? 0 : 1;
+    setIsDrawerOpen(!isDrawerOpen);
+    
+    Animated.spring(drawerAnimation, {
+      toValue,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+      duration: 400,
+    }).start();
+  };
+
   useEffect(() => {
     fetchUserData();
-  }, []);
+    if (userData?.data?._id) {
+      fetchUserPosts();
+    }
+  }, [userData?.data?._id]);
 
-  const onRefresh = () => {
+  const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    setLoading(true);
-    fetchUserData();
-  };
+    Promise.all([fetchUserData(), fetchUserPosts()])
+      .finally(() => setRefreshing(false));
+  }, []);
 
   const fetchUserData = async () => {
     try {
@@ -93,17 +118,6 @@ export default function ProfileScreen() {
 
       setUserData(response.data);
 
-      // Fetch order count
-      // const ordersResponse = await api.get('/api/orders/count', {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-      // setOrderCount(ordersResponse.data.count);
-
-      // Fetch favorites count
-      // const favoritesResponse = await api.get('/api/favorites/count', {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-      // setFavoriteCount(favoritesResponse.data.count);
     } catch (error) {
       console.error("Error fetching user data:", error);
       Alert.alert("Error", "Failed to load profile data");
@@ -112,26 +126,173 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLogout = async () => {
+  // const handleLogout = async () => {
+  //   try {
+  //     await AsyncStorage.removeItem("token");
+  //     console.log("Logged out");
+  //     navigation.replace("Login");
+  //   } catch (error) {
+  //     console.error("Error logging out:", error);
+  //     Alert.alert("Error", "Failed to logout");
+  //   }
+  // };
+
+  const fetchUserPosts = async () => {
     try {
-      await AsyncStorage.removeItem("token");
-      console.log("Logged out");
-      navigation.replace("Login");
+      const response = await api.get('/posts');
+      if (response.data.success) {
+        // Filter posts for current user and sort by date
+        const myPosts = response.data.data
+          .filter(post => post.userId._id === userData?.data?._id)
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by date, newest first
+        
+        setUserPosts(myPosts);
+      }
     } catch (error) {
-      console.error("Error logging out:", error);
-      Alert.alert("Error", "Failed to logout");
+      console.error("Error fetching user posts:", error);
     }
   };
 
-  const renderMenuItem = ({ item }) => (
-    <TouchableOpacity style={styles.menuItem} onPress={item.onPress}>
-      <View style={styles.menuItemLeft}>
-        <Icon name={item.icon} size={20} color="#555" />
-        <Text style={styles.menuItemText}>{item.label}</Text>
-      </View>
-      <Icon name="chevron-forward-outline" size={20} color="#555" />
+  const handlePostOptions = (post) => {
+    setSelectedPost(post);
+    setShowOptions(true);
+  };
+
+  const handleUpdateSuccess = () => {
+    fetchUserPosts(); // Refresh posts after update
+  };
+
+  const handleUpdatePost = () => {
+    setShowOptions(false);
+    navigation.navigate('UpdatePostScreen', { 
+      post: selectedPost,
+      onUpdateSuccess: handleUpdateSuccess // Pass the callback
+    });
+  };
+
+  const handleDeletePost = async () => {
+    try {
+      setShowOptions(false);
+      // Show loading indicator
+      setLoading(true);
+
+      const response = await api.delete(`/posts/${selectedPost._id}`);
+      if (response.data.success) {
+        // Update posts list
+        setUserPosts(posts => posts.filter(p => p._id !== selectedPost._id));
+        Alert.alert('Success', 'Post deleted successfully');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      Alert.alert('Error', 'Failed to delete post');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderDrawerItem = (item) => (
+    <TouchableOpacity
+      key={item.id}
+      style={[
+        styles.drawerItem,
+        { opacity: 1 }
+      ]}
+      onPress={() => {
+        toggleDrawer();
+        setTimeout(item.onPress, 1000);
+      }}
+      activeOpacity={0.7}
+    >
+      <Icon name={item.icon} size={24} color="#558B2F" />
+      <Text style={styles.drawerItemText}>{item.label}</Text>
     </TouchableOpacity>
   );
+
+  const translateX = drawerAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [DRAWER_WIDTH, 0],
+  });
+
+  const overlayOpacity = drawerAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  const renderPost = (post) => {
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      
+      // Format date
+      const dateOptions = {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      };
+      const dateStr = date.toLocaleDateString("en-US", dateOptions);
+      
+      // Format time
+      const timeOptions = {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true  // This ensures 12-hour format with AM/PM
+      };
+      const timeStr = date.toLocaleTimeString("en-US", timeOptions);
+      
+      return { dateStr, timeStr };
+    };
+
+    const { dateStr, timeStr } = formatDate(post.createdAt);
+
+    return (
+      <View key={post._id} style={styles.postCard}>
+        <View style={styles.postHeader}>
+          <View style={styles.postUserInfo}>
+            <Image
+              source={
+                userData?.photo
+                  ? { uri: userData.photo }
+                  : require("../assets/avatar.png")
+              }
+              style={styles.postAvatar}
+            />
+            <View>
+              <Text style={styles.postUsername}>{userData?.data?.name}</Text>
+              <View style={styles.timeContainer}>
+                <Text style={styles.postDate}>{dateStr}</Text>
+                <Text style={styles.postTime}>{timeStr}</Text>
+              </View>
+            </View>
+          </View>
+          <TouchableOpacity
+            onPress={() => handlePostOptions(post)}
+            style={styles.optionsButton}
+          >
+            <Icon name="ellipsis-vertical" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+        
+        <Text style={styles.postText}>{post.text}</Text>
+        
+        {post.imagePublicId && (
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ 
+                uri: `https://res.cloudinary.com/dfm7lhrwz/image/upload/${post.imagePublicId}` 
+              }}
+              style={styles.postImage}
+              resizeMode="cover"
+            />
+          </View>
+        )}
+
+        <View style={styles.postFooter}>
+          <Text style={styles.likesText}>
+            {post.likes?.length || 0} likes
+          </Text>
+        </View>
+      </View>
+    );
+  };
 
   if (loading) {
     return (
@@ -145,59 +306,149 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <Header title="My Profile" />
 
-      {/* Profile Info */}
-      <View style={styles.profileInfo}>
-        {userData?.photo ? (
-          <Image source={{ uri: userData.photo }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatar}>
-            <Image
-              source={require("../assets/avatar.png")}
-              style={{ width: 60, height: 60 }}
-            />
-            {/* <Icon name="person-outline" size={40} color="#555" /> */}
-          </View>
-        )}
+      {/* Menu Button */}
+      <TouchableOpacity 
+        style={styles.menuButton} 
+        onPress={toggleDrawer}
+      >
+        <Icon name="menu-outline" size={30} color="#555" />
+      </TouchableOpacity>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{favoriteCount}</Text>
-            <Text style={styles.statLabel}>Favorites</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{orderCount}</Text>
-            <Text style={styles.statLabel}>Orders</Text>
-          </View>
-        </View>
+      <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#8BC34A']}
+          />
+        }
+      >
+        {/* Profile Info */}
+        <View style={styles.profileInfo}>
+          {userData?.photo ? (
+            <Image source={{ uri: userData.photo }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatar}>
+              <Image
+                source={require("../assets/avatar.png")}
+                style={{ width: 60, height: 60 }}
+              />
+              {/* <Icon name="person-outline" size={40} color="#555" /> */}
+            </View>
+          )}
 
-        <Text style={styles.profileName}>{userData?.data?.name}</Text>
-        <View style={styles.locationContainer}>
-          <Icon name="location-outline" size={16} color="#555" />
-          <Text style={styles.locationText}>
-            {userData?.data?.address?.city}, {userData?.data?.address?.country}
-          </Text>
-        </View>
+          <View style={styles.statsContainer}>
+            <View style={styles.statBox}>
+              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statLabel}>Favorites</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statLabel}>Orders</Text>
+            </View>
+          </View>
 
-        {userData?.data?.farm?.title && (
-          <View style={styles.farmInfo}>
-            <Text style={styles.farmTitle}>{userData?.data?.farm.title}</Text>
-            <Text style={styles.farmExperience}>
-              {userData.farm.experience} years of experience
+          <Text style={styles.profileName}>{userData?.data?.name}</Text>
+          <View style={styles.locationContainer}>
+            <Icon name="location-outline" size={16} color="#555" />
+            <Text style={styles.locationText}>
+              {userData?.data?.address?.city}, {userData?.data?.address?.country}
             </Text>
           </View>
-        )}
-      </View>
 
-      {/* Menu List */}
-      <FlatList
-        data={menuItems}
-        renderItem={renderMenuItem}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.menuList}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      />
+          {userData?.data?.farm?.title && (
+            <View style={styles.farmInfo}>
+              <Text style={styles.farmTitle}>{userData?.data?.farm.title}</Text>
+              <Text style={styles.farmExperience}>
+                {userData.farm.experience} years of experience
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* User Posts */}
+        <View style={styles.postsContainer}>
+          <Text style={styles.sectionTitle}>My Posts</Text>
+          {userPosts.length > 0 ? (
+            userPosts.map(renderPost)
+          ) : (
+            <Text style={styles.noPostsText}>No posts yet</Text>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Post Options Modal */}
+      <Modal
+        visible={showOptions}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowOptions(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowOptions(false)}
+        >
+          <View style={styles.optionsModal}>
+            <TouchableOpacity
+              style={styles.optionItem}
+              onPress={handleUpdatePost}
+            >
+              <Icon name="create-outline" size={24} color="#558B2F" />
+              <Text style={styles.optionText}>Update Post</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.optionItem, styles.deleteOption]}
+              onPress={handleDeletePost}
+            >
+              <Icon name="trash-outline" size={24} color="#FF5252" />
+              <Text style={[styles.optionText, styles.deleteText]}>
+                Delete Post
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Drawer Overlay */}
+      {isDrawerOpen && (
+        <>
+          <Animated.View
+            style={[
+              styles.overlay,
+              {
+                opacity: overlayOpacity,
+              }
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.overlayTouch}
+              activeOpacity={1}
+              onPress={toggleDrawer}
+            />
+          </Animated.View>
+          <Animated.View
+            style={[
+              styles.drawer,
+              {
+                transform: [{ translateX }],
+              },
+            ]}
+          >
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle}>Menu</Text>
+              <TouchableOpacity 
+                onPress={toggleDrawer}
+                style={styles.closeButton}
+              >
+                <Icon name="close-outline" size={32} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            {menuItems.map(renderDrawerItem)}
+          </Animated.View>
+        </>
+      )}
     </SafeAreaView>
   );
 }
@@ -309,5 +560,214 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#777",
     marginTop: 2,
+  },
+  menuButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 45,
+    right: 20,
+    zIndex: 50,
+    // backgroundColor: '#4CAF50',
+    // padding: 8,
+    // borderRadius: 8,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 98,
+  },
+  overlayTouch: {
+    width: '100%',
+    height: '100%',
+  },
+  drawer: {
+    borderTopLeftRadius: 25,
+    borderBottomLeftRadius: 25,
+    position: 'absolute',
+    top: 40,
+    right: 0,
+    width: DRAWER_WIDTH,
+    height: height - 40,
+    backgroundColor: '#F1F8E9',
+    zIndex: 99,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: -2,
+      height: 0,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    transform: [{ translateX: DRAWER_WIDTH }],
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#C8E6C9',
+    backgroundColor: '#8BC34A',
+    borderTopLeftRadius: 25,
+  },
+  drawerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#C8E6C9',
+    backgroundColor: '#F1F8E9',
+  },
+  drawerItemText: {
+    marginLeft: 15,
+    fontSize: 16,
+    color: '#33691E',
+    fontWeight: '500',
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+  },
+  postsContainer: {
+    padding: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  postCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  postHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  postUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  postAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  postUsername: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  postTime: {
+    fontSize: 12,
+    color: '#666',
+  },
+  postText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 10,
+    lineHeight: 20,
+  },
+  postImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+  },
+  optionsButton: {
+    padding: 5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionsModal: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '80%',
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  optionText: {
+    fontSize: 16,
+    marginLeft: 15,
+    color: '#333',
+  },
+  deleteOption: {
+    borderBottomWidth: 0,
+  },
+  deleteText: {
+    color: '#FF5252',
+  },
+  imageContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 10,
+    backgroundColor: '#f0f0f0',
+  },
+  postImage: {
+    width: '100%',
+    height: '100%',
+  },
+  postFooter: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  likesText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  noPostsText: {
+    textAlign: 'center',
+    color: '#666',
+    fontSize: 16,
+    marginTop: 20,
+  },
+  timeContainer: {
+    flexDirection: 'column',
+  },
+  postDate: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  postTime: {
+    fontSize: 11,
+    color: '#888',
+    fontStyle: 'italic',
   },
 });

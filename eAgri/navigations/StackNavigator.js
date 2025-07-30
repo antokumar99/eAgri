@@ -35,6 +35,8 @@ import CartScreen from "../screens/CartScreen";
 import CheckoutScreen from "../screens/CheckoutScreen";
 import AddProductScreen from "../screens/AddProductScreen";
 import EditProductScreen from "../screens/EditProductScreen";
+import UpdatePostScreen from '../screens/UpdatePostScreen';
+
 
 const StackNavigator = () => {
   const Stack = createStackNavigator();
@@ -184,6 +186,7 @@ const StackNavigator = () => {
         <Stack.Screen name="AdminRegister" component={AdminRegister} />
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+        <Stack.Screen name="UpdatePostScreen" component={UpdatePostScreen} />
         <Stack.Screen
           name="AddressEditScreen"
           component={AddressEditScreen}

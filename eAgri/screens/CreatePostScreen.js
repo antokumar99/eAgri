@@ -68,27 +68,27 @@ const AddPostScreen = () => {
   const pickImage = async () => {
     try {
       // Check permissions again before picking
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission Required',
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
           'Please grant camera roll permissions in your device settings to select images.'
-        );
-        return;
-      }
+      );
+      return;
+    }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
         allowsMultipleSelection: false,
         exif: true,
-      });
+    });
 
       console.log('Image picker result:', result);
 
-      if (!result.canceled) {
+    if (!result.canceled) {
         // Verify the image exists
         const imageUri = result.assets[0].uri;
         const fileInfo = await FileSystem.getInfoAsync(imageUri);
@@ -193,12 +193,12 @@ const AddPostScreen = () => {
       console.log('Current token before posting:', token);
       
       if (!token) {
-        Alert.alert(
+      Alert.alert(
           'Authentication Required',
           'Please login to create a post',
-          [
-            {
-              text: 'OK',
+        [
+          {
+            text: 'OK',
               onPress: () => navigation.navigate('Login')
             }
           ]
@@ -332,15 +332,22 @@ const AddPostScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Share your thoughts"/>
-      <KeyboardAvoidingView
+          <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={80}
-      >
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={80}
+          >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.container}>
             <Text style={styles.header}>Create a Post</Text>
 
+            <TextInput
+              style={styles.textInput}
+              placeholder="Share your thoughts..."
+              multiline
+              value={postText}
+              onChangeText={setPostText}
+            />
             <TextInput
               style={styles.textInput}
               placeholder="Share your thoughts..."
@@ -358,7 +365,7 @@ const AddPostScreen = () => {
               <Text style={styles.imageButtonText}>
                 {postImage ? 'Change Image' : 'Pick an Image'}
               </Text>
-            </TouchableOpacity>
+                </TouchableOpacity>
 
             <TouchableOpacity 
               style={[styles.postButton, isPosting && styles.disabledButton]}
@@ -368,9 +375,9 @@ const AddPostScreen = () => {
               {isPosting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.postButtonText}>Post</Text>
+                  <Text style={styles.postButtonText}>Post</Text>
               )}
-            </TouchableOpacity>
+                </TouchableOpacity>
 
             {isPosting && (
               <View style={styles.progressContainer}>
@@ -382,7 +389,7 @@ const AddPostScreen = () => {
             )}
           </View>
         </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

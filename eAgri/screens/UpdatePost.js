@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,12 +19,15 @@ import Header from '../components/Header';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from "../services/api";
 
-const AddPostScreen = () => {
-  const navigation = useNavigation();
-  const [postText, setPostText] = useState('');
-  const [postImage, setPostImage] = useState(null);
-  const [isPosting, setIsPosting] = useState(false); // New state to track posting status
+const UpdatePost = ({ route, navigation }) => {
+  const { post } = route.params;
+  const [postText, setPostText] = useState(post.text);
+  const [postImage, setPostImage] = useState(post.imagePublicId ? 
+    `https://res.cloudinary.com/dfm7lhrwz/image/upload/${post.imagePublicId}` : null
+  );
+  const [isUpdating, setIsUpdating] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [originalImageId, setOriginalImageId] = useState(post.imagePublicId);
 
   React.useEffect(() => {
     checkToken();
@@ -120,7 +123,7 @@ const AddPostScreen = () => {
     useCallback(() => {
       const hasUnsavedChanges = () => {
         // Don't check for unsaved changes if we're in the process of posting
-        if (isPosting) return false;
+        if (isUpdating) return false;
         return postText.trim() !== '' || postImage !== null;
       };
 
@@ -158,7 +161,7 @@ const AddPostScreen = () => {
       return () => {
         navigation.removeListener('beforeRemove', handleBeforeRemove);
       };
-    }, [navigation, postText, postImage, isPosting]) // Added isPosting to dependencies
+    }, [navigation, postText, postImage, isUpdating]) // Added isPosting to dependencies
   );
 
   const testAuth = async () => {
@@ -172,127 +175,87 @@ const AddPostScreen = () => {
     }
   };
 
-  const handlePost = async () => {
+  const handleUpdate = async () => {
     if (!postText.trim()) {
       Alert.alert('Error', 'Post text cannot be empty!');
       return;
     }
 
-    setIsPosting(true);
+    setIsUpdating(true);
 
     try {
-      // Test authentication first
-      const isAuthenticated = await testAuth();
-      if (!isAuthenticated) {
-        throw new Error('Authentication failed');
-      }
-
-      const token = await AsyncStorage.getItem('token');
-      console.log('Current token before posting:', token);
-      
-      if (!token) {
-      Alert.alert(
-          'Authentication Required',
-          'Please login to create a post',
-        [
-          {
-            text: 'OK',
-              onPress: () => navigation.navigate('Login')
-            }
-          ]
-        );
-        return;
-      }
-
       const formData = new FormData();
       formData.append('text', postText.trim());
 
-      if (postImage) {
+      // Check if image was changed
+      if (postImage && !postImage.includes('cloudinary')) {
         const imageUriParts = postImage.split('/');
         const fileName = imageUriParts[imageUriParts.length - 1];
-        const fileType = postImage.endsWith('png') ? 'image/png' : 'image/jpeg';
         
-        try {
-          const fileInfo = await FileSystem.getInfoAsync(postImage);
-          console.log('File size:', fileInfo.size / (1024 * 1024), 'MB');
+        // Get file info
+        const fileInfo = await FileSystem.getInfoAsync(postImage);
+        
+        // Read the file as base64
+        const base64 = await FileSystem.readAsStringAsync(postImage, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
 
-          // Check file size before uploading (optional)
-          if (fileInfo.size > 10 * 1024 * 1024) { // 10MB limit
-            throw new Error('Image size must be less than 10MB');
-          }
-
-          formData.append('image', {
-            uri: postImage,
-            type: fileType,
-            name: fileName
-          });
-        } catch (fileError) {
-          console.error('File system error:', fileError);
-          if (fileError.message.includes('10MB')) {
-            throw fileError;
-          }
-          // If there's an error getting file info, try to upload anyway
-          formData.append('image', {
-            uri: postImage,
-            type: fileType,
-            name: fileName
-          });
-        }
+        formData.append('image', {
+          uri: postImage,
+          type: 'image/jpeg',
+          name: fileName,
+        });
       }
 
-      const response = await api.postFormData('/posts', formData, {
+      // Add original image ID to handle image updates/deletions
+      if (originalImageId) {
+        formData.append('originalImageId', originalImageId);
+      }
+
+      const config = {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Accept': 'application/json',
+        },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          console.log('Upload progress:', percentCompleted, '%');
           setUploadProgress(percentCompleted);
-          
-          // If upload is complete, show success message
-          if (percentCompleted === 100) {
-            setTimeout(() => {
-              Alert.alert(
-                'Success',
-                'Post created successfully!',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => navigation.navigate('Main')
-                  }
-                ]
-              );
-            }, 500);
-          }
-        }
-      });
+        },
+        timeout: 30000, // Increase timeout to 30 seconds
+      };
+
+      const response = await api.put(`/posts/${post._id}`, formData, config);
 
       if (response.data.success) {
-        setPostText('');
-        setPostImage(null);
-        navigation.navigate('Main');
+        Alert.alert(
+          'Success',
+          'Post updated successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                if (route.params?.onUpdateSuccess) {
+                  route.params.onUpdateSuccess();
+                }
+                navigation.goBack();
+              }
+            }
+          ]
+        );
       }
     } catch (error) {
-      console.error('Error details:', error.response?.data || error.message);
+      console.error('Error updating post:', error);
+      let errorMessage = 'Failed to update post. Please try again.';
       
-      // Don't show error if upload completed successfully
-      if (uploadProgress !== 100) {
-        let errorMessage = 'Failed to create post. Please try again.';
-        
-        if (error.message === 'Please login to create a post') {
-          navigation.navigate('Login');
-          return;
-        }
-        
-        if (error.message.includes('10MB')) {
-          errorMessage = 'The image file is too large. Please choose a smaller image (less than 10MB).';
-        } else if (error.response?.data?.error) {
-          errorMessage = error.response.data.error;
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-
-        Alert.alert('Error', errorMessage);
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
-      setIsPosting(false);
+      setIsUpdating(false);
     }
   };
 
@@ -329,50 +292,65 @@ const AddPostScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header/>
+      <Header title="Update Post"/>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={80}
       >
-        <Text style={styles.header}>Create a Post</Text>
-
         <TextInput
           style={styles.textInput}
-          placeholder="Share your thoughts..."
+          placeholder="Update your post..."
           multiline
           value={postText}
           onChangeText={setPostText}
         />
 
-        <ImagePreview />
+        {postImage && (
+          <View style={styles.imageContainer}>
+            <Image 
+              source={{ uri: postImage }}
+              style={styles.previewImage}
+              resizeMode="cover"
+            />
+            <TouchableOpacity 
+              style={styles.removeImageButton} 
+              onPress={() => {
+                setPostImage(null);
+                setOriginalImageId(null);
+              }}
+            >
+              <Text style={styles.removeImageButtonText}>X</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <TouchableOpacity 
           style={styles.imageButton} 
           onPress={pickImage}
         >
           <Text style={styles.imageButtonText}>
-            {postImage ? 'Change Image' : 'Pick an Image'}
+            {postImage ? 'Change Image' : 'Add Image'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.postButton, isPosting && styles.disabledButton]}
-          onPress={handlePost}
-          disabled={isPosting}
+          style={[styles.updateButton, isUpdating && styles.disabledButton]}
+          onPress={handleUpdate}
+          disabled={isUpdating}
         >
-          {isPosting ? (
+          {isUpdating ? (
             <ActivityIndicator color="#fff" />
           ) : (
-          <Text style={styles.postButtonText}>Post</Text>
+            <Text style={styles.updateButtonText}>Update Post</Text>
           )}
         </TouchableOpacity>
 
-        {isPosting && (
+        {isUpdating && (
           <View style={styles.progressContainer}>
             <ActivityIndicator color="#32CD32" />
             <Text style={styles.progressText}>
-              {uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : 'Processing...'}
+              {uploadProgress > 0 ? `Updating... ${uploadProgress}%` : 'Processing...'}
             </Text>
           </View>
         )}
@@ -380,8 +358,6 @@ const AddPostScreen = () => {
     </SafeAreaView>
   );
 };
-
-export default AddPostScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -448,13 +424,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  postButton: {
-    backgroundColor: '#32CD32',
+  updateButton: {
+    backgroundColor: '#4CAF50',
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
+    marginTop: 20,
   },
-  postButtonText: {
+  updateButtonText: {
     fontSize: 18,
     color: '#fff',
     fontWeight: 'bold',
@@ -479,3 +456,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   }
 });
+
+export default UpdatePost;

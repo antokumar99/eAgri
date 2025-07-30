@@ -1,12 +1,16 @@
 const express = require("express");
 const router = express.Router();
+const AuthController = require('../controllers/AuthController');
+const UserController = require('../controllers/UserController');
+const ResearchController = require('../controllers/ResearchController');
+const authMiddleware = require('../middleware/authMiddleware');
+const uploadMiddleware = require('../middleware/uploadMiddleware');
+const PostController = require('../controllers/PostController');
 const AuthController = require("../controllers/AuthController");
 const UserController = require("../controllers/UserController");
 const ResearchController = require("../controllers/ResearchController");
 const authMiddleware = require("../middleware/authMiddleware");
 const adminController = require("../controllers/AdminController");
-const multer = require("multer");
-const path = require("path");
 const PostController = require("../controllers/PostController");
 const { productController } = require("../controllers/ProductController");
 //const rentalController = require("../controllers/RentalController");
@@ -43,6 +47,9 @@ router.post(
 );
 router.get("/posts", PostController.getAllPosts);
 router.post("/posts/:postId/like", authMiddleware, PostController.likePost);
+router.get('/posts/user/:userId', authMiddleware, PostController.getUserPosts);
+router.delete('/posts/:postId', authMiddleware, PostController.deletePost);
+router.put('/posts/:postId', authMiddleware, uploadMiddleware, PostController.updatePost);
 
 // Product routes
 router.get(
