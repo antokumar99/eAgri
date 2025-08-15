@@ -6,7 +6,6 @@ const ResearchController = require('../controllers/ResearchController');
 const authMiddleware = require('../middleware/authMiddleware');
 const uploadMiddleware = require('../middleware/uploadMiddleware');
 const PostController = require('../controllers/PostController');
-const UserController = require("../controllers/UserController");
 const adminController = require("../controllers/AdminController");
 const { productController } = require("../controllers/ProductController");
 //const rentalController = require("../controllers/RentalController");
