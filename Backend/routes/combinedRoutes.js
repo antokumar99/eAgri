@@ -56,7 +56,7 @@ router.get(
 router.post(
   "/addproducts",
   authMiddleware,
-  productUpload,
+  uploadMiddleware,
   productController.createProduct
 );
 
@@ -66,7 +66,7 @@ router.get("/products/:id", productController.getProductById);
 router.put(
   "/products/:id",
   authMiddleware,
-  productUpload,
+  uploadMiddleware,
   productController.updateProduct
 );
 router.delete("/products/:id", authMiddleware, productController.deleteProduct);
