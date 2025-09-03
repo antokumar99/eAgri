@@ -36,6 +36,7 @@ import CheckoutScreen from "../screens/CheckoutScreen";
 import AddProductScreen from "../screens/AddProductScreen";
 import EditProductScreen from "../screens/EditProductScreen";
 import UpdatePostScreen from '../screens/UpdatePostScreen';
+import CommentScreen from "../screens/CommentScreen";
 
 
 const StackNavigator = () => {
@@ -86,7 +87,7 @@ const StackNavigator = () => {
               ),
           }}
         />
-        <Tab.Screen
+        {/* <Tab.Screen
           name="Service"
           component={RentScreen}
           options={{
@@ -100,7 +101,7 @@ const StackNavigator = () => {
                 <AntDesign name="setting" size={24} color="black" />
               ),
           }}
-        />
+        /> */}
         <Tab.Screen
           name="Community"
           component={CommunityScreen}
@@ -179,7 +180,7 @@ const StackNavigator = () => {
           component={ProductDetailsScreen}
         />
         <Stack.Screen name="ResearchScreen" component={ResearchScreen} />
-        <Stack.Screen name="ForumScreen" component={ForumScreen} />
+        <Stack.Screen name="CommunityScreen" component={CommunityScreen} />
         <Stack.Screen name="PaymentWebView" component={PaymentWebView} />
         {/* <Stack.Screen name="PaymentSuccess" component={PaymentSuccess} /> */}
         <Stack.Screen name="AdminLogin" component={AdminLogin} />
@@ -198,6 +199,7 @@ const StackNavigator = () => {
         <Stack.Screen name="AddProduct" component={AddProductScreen} />
         <Stack.Screen name="EditProduct" component={EditProductScreen} />
         <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
+        <Stack.Screen name="CommentScreen" component={CommentScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

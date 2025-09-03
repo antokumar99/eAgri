@@ -88,6 +88,10 @@ const CommunityFeed = ({ navigation }) => {
     }
   };
 
+  const handleCommentUpdate = () => {
+    fetchPosts(); // This will refresh the posts and comment counts
+  };
+
   const renderPost = ({ item }) => {
     const createdAt = new Date(item.createdAt).toLocaleDateString("en-US", {
       year: "numeric",
@@ -140,14 +144,18 @@ const CommunityFeed = ({ navigation }) => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('CommentScreen', { 
+              postId: item._id,
+              postOwnerId: item.userId._id,
+              onCommentUpdate: handleCommentUpdate
+            })}
+          >
             <FontAwesome name="comment" size={20} color="#666" />
-            <Text style={styles.actionText}>Comment</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <FontAwesome name="share" size={20} color="#666" />
-            <Text style={styles.actionText}>Share</Text>
+            <Text style={styles.actionText}>
+              {item.commentsCount || 0} Comments
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

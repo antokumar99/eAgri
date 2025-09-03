@@ -45,6 +45,9 @@ router.post("/posts/:postId/like", authMiddleware, PostController.likePost);
 router.get('/posts/user/:userId', authMiddleware, PostController.getUserPosts);
 router.delete('/posts/:postId', authMiddleware, PostController.deletePost);
 router.put('/posts/:postId', authMiddleware, uploadMiddleware, PostController.updatePost);
+router.get('/posts/:postId/comments', PostController.getComments);
+router.post('/posts/:postId/comments', authMiddleware, PostController.addComment);
+router.delete('/posts/:postId/comments/:commentId', authMiddleware, PostController.deleteComment);
 
 // Product routes
 router.get(
@@ -56,7 +59,7 @@ router.get(
 router.post(
   "/addproducts",
   authMiddleware,
-  productUpload,
+  uploadMiddleware,
   productController.createProduct
 );
 
@@ -66,7 +69,7 @@ router.get("/products/:id", productController.getProductById);
 router.put(
   "/products/:id",
   authMiddleware,
-  productUpload,
+  uploadMiddleware,
   productController.updateProduct
 );
 router.delete("/products/:id", authMiddleware, productController.deleteProduct);

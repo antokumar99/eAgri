@@ -32,4 +32,12 @@ postSchema.virtual('imageUrl').get(function() {
   return '';
 });
 
+// Add virtual for comments count
+postSchema.virtual('commentsCount', {
+  ref: 'Comment',
+  localField: '_id',
+  foreignField: 'postId',
+  count: true
+});
+
 module.exports = mongoose.model('Post', postSchema); 

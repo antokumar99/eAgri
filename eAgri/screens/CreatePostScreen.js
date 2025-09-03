@@ -348,13 +348,6 @@ const AddPostScreen = () => {
               value={postText}
               onChangeText={setPostText}
             />
-            <TextInput
-              style={styles.textInput}
-              placeholder="Share your thoughts..."
-              multiline
-              value={postText}
-              onChangeText={setPostText}
-            />
 
             <ImagePreview />
 

@@ -96,17 +96,17 @@ function HomeScreen({ navigation }) {
               screenName="CreatePost"
             />
             {/* <ServiceCard iconName="person-outline" title="কৃষি পরামর্শ" screenName="AdviceScreen" /> */}
-            <ServiceCard iconName="key" title="ভাড়া" screenName="RentScreen" />
+            <ServiceCard iconName="key" title="Rent" screenName="RentScreen" />
           </View>
           <View style={styles.serviceRow}>
             <ServiceCard
               iconName="attach-money"
-              title="ক্রয়"
+              title="Marketplace"
               screenName="BuyScreen"
             />
             <ServiceCard
               iconName="shopping-cart"
-              title="বিক্রয়"
+              title="Sell"
               screenName="SellScreen"
             />
           </View>
@@ -118,8 +118,8 @@ function HomeScreen({ navigation }) {
             />
             <ServiceCard
               iconName="trending-up"
-              title="Forum"
-              screenName="ForumScreen"
+              title="Community"
+              screenName="CommunityScreen"
             />
           </View>
         </View>

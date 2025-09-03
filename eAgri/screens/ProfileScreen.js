@@ -100,9 +100,14 @@ export default function ProfileScreen() {
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    Promise.all([fetchUserData(), fetchUserPosts()])
-      .finally(() => setRefreshing(false));
-  }, []);
+    Promise.all([
+      fetchUserData(),
+      fetchUserPosts()
+    ])
+    .finally(() => {
+      setRefreshing(false);
+    });
+  }, [userData?.data?._id]);
 
   const fetchUserData = async () => {
     try {
@@ -139,17 +144,28 @@ export default function ProfileScreen() {
 
   const fetchUserPosts = async () => {
     try {
-      const response = await api.get('/posts');
+      // First get user's posts directly using the dedicated endpoint
+      const response = await api.get(`/posts/user/${userData?.data?._id}`);
       if (response.data.success) {
-        // Filter posts for current user and sort by date
-        const myPosts = response.data.data
-          .filter(post => post.userId._id === userData?.data?._id)
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by date, newest first
-        
+        const myPosts = response.data.data.sort((a, b) => 
+          new Date(b.createdAt) - new Date(a.createdAt)
+        );
         setUserPosts(myPosts);
       }
     } catch (error) {
       console.error("Error fetching user posts:", error);
+      // If there's an error, try the fallback method
+      try {
+        const allPostsResponse = await api.get('/posts');
+        if (allPostsResponse.data.success) {
+          const myPosts = allPostsResponse.data.data
+            .filter(post => post.userId._id === userData?.data?._id)
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          setUserPosts(myPosts);
+        }
+      } catch (fallbackError) {
+        console.error("Error in fallback fetch:", fallbackError);
+      }
     }
   };
 
@@ -188,6 +204,10 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCommentUpdate = () => {
+    fetchUserPosts(); // This will refresh the posts and update comment counts
   };
 
   const renderDrawerItem = (item) => (
@@ -273,12 +293,10 @@ export default function ProfileScreen() {
         
         <Text style={styles.postText}>{post.text}</Text>
         
-        {post.imagePublicId && (
+        {post.imageUrl && (
           <View style={styles.imageContainer}>
             <Image
-              source={{ 
-                uri: `https://res.cloudinary.com/dfm7lhrwz/image/upload/${post.imagePublicId}` 
-              }}
+              source={{ uri: post.imageUrl }}
               style={styles.postImage}
               resizeMode="cover"
             />
@@ -286,9 +304,22 @@ export default function ProfileScreen() {
         )}
 
         <View style={styles.postFooter}>
-          <Text style={styles.likesText}>
-            {post.likes?.length || 0} likes
-          </Text>
+          <View style={styles.postStats}>
+            <Text style={styles.statsText}>
+              {post.likes?.length || 0} likes
+            </Text>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('CommentScreen', { 
+                postId: post._id,
+                postOwnerId: userData?.data?._id,
+                onCommentUpdate: handleCommentUpdate
+              })}
+            >
+              <Text style={styles.statsText}>
+                {post.commentsCount || 0} comments
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -747,7 +778,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#eee',
   },
-  likesText: {
+  postStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statsText: {
     fontSize: 14,
     color: '#666',
   },

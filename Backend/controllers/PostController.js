@@ -1,6 +1,7 @@
 const Post = require('../models/Post');
 const { uploadImage, deleteImage } = require('../utils/cloudinary');
 const fs = require('fs');
+const Comment = require('../models/Comment');
 
 exports.createPost = async (req, res) => {
   try {
@@ -91,33 +92,28 @@ exports.getAllPosts = async (req, res) => {
   try {
     // Get posts from last 10 days only
     const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    tenDaysAgo.setDate(tenDaysAgo.getDate()-10);
 
     const posts = await Post.find({
       createdAt: { $gte: tenDaysAgo }
     })
       .populate('userId', 'name email')
+      .populate('commentsCount')
       .sort({ 
         likes: -1,  // Sort by number of likes first
         createdAt: -1 // Then by date
       })
       .exec();
 
-      
-    // Get older posts
-    // const olderPosts = await Post.find({
-    //     createdAt: { $lt: sevenDaysAgo }
-    //   })
-    //     .populate('userId', 'name email')
-    //     .sort({ createdAt: -1 })
-    //     .exec();
-    // const allPosts = [...posts, ...olderPosts];
-    //   const postsWithUrls = allPosts.map(post => post.toJSON());
-
-
-    const postsWithUrls = posts.map(post => post.toJSON());
-
-    //console.log('Retrieved posts from last 10 days:', posts.length);  // show the number of posts
+    // Get the comments count for each post
+    const postsWithUrls = await Promise.all(posts.map(async post => {
+      const postObj = post.toJSON();
+      const commentsCount = await Comment.countDocuments({ postId: post._id });
+      return {
+        ...postObj,
+        commentsCount
+      };
+    }));
 
     res.status(200).json({
       success: true,
@@ -180,9 +176,19 @@ exports.getUserPosts = async (req, res) => {
     const posts = await Post.find({ userId })
       .sort({ createdAt: -1 })
       .populate('userId', 'name email')
+      .populate('likes')
+      .populate('commentsCount')
       .exec();
 
-    const postsWithUrls = posts.map(post => post.toJSON());
+    const postsWithUrls = posts.map(post => {
+      const postObj = post.toJSON();
+      return {
+        ...postObj,
+        isLiked: req.user ? post.likes.some(like => 
+          like._id.toString() === req.user.id
+        ) : false
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -308,6 +314,109 @@ exports.deletePost = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error deleting post'
+    });
+  }
+};
+
+exports.getComments = async (req, res) => {
+  try {
+    const comments = await Comment.find({ postId: req.params.postId })
+      .populate('userId', 'name email')
+      .populate('parentId')
+      .sort({ createdAt: -1 })
+      .exec();
+
+    res.status(200).json({
+      success: true,
+      data: comments
+    });
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching comments'
+    });
+  }
+};
+
+exports.addComment = async (req, res) => {
+  try {
+    const comment = new Comment({
+      postId: req.params.postId,
+      userId: req.user.id,
+      text: req.body.text,
+      parentId: req.body.parentId || null
+    });
+
+    await comment.save();
+    
+    const populatedComment = await Comment.findById(comment._id)
+      .populate('userId', 'name email')
+      .populate('parentId');
+
+    res.status(201).json({
+      success: true,
+      data: populatedComment
+    });
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error adding comment'
+    });
+  }
+};
+
+exports.deleteComment = async (req, res) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+    
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        error: 'Comment not found'
+      });
+    }
+
+    // Get the post to check if the user is the post owner
+    const post = await Post.findById(comment.postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        error: 'Associated post not found'
+      });
+    }
+
+    // Allow deletion if user is either the comment owner or the post owner
+    const isCommentOwner = comment.userId.toString() === req.user.id;
+    const isPostOwner = post.userId.toString() === req.user.id;
+
+    if (!isCommentOwner && !isPostOwner) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to delete this comment'
+      });
+    }
+
+    // Delete all replies to this comment
+    await Comment.deleteMany({ parentId: comment._id });
+    
+    // Delete the comment itself
+    await Comment.findByIdAndDelete(comment._id);
+
+    // Update the comments count for the post
+    const commentsCount = await Comment.countDocuments({ postId: comment.postId });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Comment deleted successfully',
+      commentsCount
+    });
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error deleting comment'
     });
   }
 }; 
