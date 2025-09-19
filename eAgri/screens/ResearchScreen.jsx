@@ -153,7 +153,7 @@ const ResearchScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Header title="Research Papers" />
+      <Header title="Latest Researches" />
       <View style={styles.searchContainer}>
         <MaterialIcons name="search" size={24} color="#666" style={styles.searchIcon} />
         <TextInput

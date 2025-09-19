@@ -16,6 +16,48 @@ const { orderController } = require("../controllers/OrderController");
 router.post("/login", AuthController.login);
 router.post("/register", AuthController.register);
 router.get("/verify-email/:token", AuthController.verifyEmail);
+router.get("/verification-success", (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>Email Verification</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+          }
+          .container {
+            text-align: center;
+            padding: 40px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          h1 {
+            color: #008E97;
+            margin-bottom: 20px;
+          }
+          p {
+            color: #666;
+            font-size: 18px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>✅ Success!</h1>
+          <p>Your email has been verified successfully.</p>
+          <p>You can now close this window and login to the app.</p>
+        </div>
+      </body>
+    </html>
+  `);
+});
 router.post("/resend-verification", AuthController.resendVerification);
 // router.get('/verify-email/:token', AuthController.verifyEmail);
 

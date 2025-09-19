@@ -136,22 +136,28 @@ module.exports = {
       await newUser.save();
 
       // Send verification email
-      const verificationLink = `${req.protocol}://${req.get(
-        'host'
-      )}/verify-email/${verificationToken}`;
-
-      // You might want to use a custom front-end URL (like MOBILE_APP_URL) for verification
-      // const verificationLink = `${process.env.MOBILE_APP_URL}/verify?token=${verificationToken}`;
+      const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+      const emailContent = `
+        <h1>Welcome to eAgri!</h1>
+        <p>Thank you for registering. Please click the button below to verify your email address:</p>
+        <a href="${verificationUrl}" style="
+          background-color: #008E97;
+          color: white;
+          padding: 12px 24px;
+          text-decoration: none;
+          border-radius: 4px;
+          display: inline-block;
+          margin: 16px 0;
+        ">Verify your email</a>
+        <p>If the button doesn't work, you can also copy and paste this link in your browser:</p>
+        <p>${verificationUrl}</p>
+      `;
 
       const mailOptions = {
         from: process.env.EMAIL_USERNAME, 
         to: email,
         subject: 'Please verify your email',
-        html: `
-          <p>Hello ${name},</p>
-          <p>Thank you for registering. Please verify your email by clicking the link below:</p>
-          <a href="${verificationLink}" target="_blank">Verify Email</a>
-        `
+        html: emailContent
       };
 
       await transporter.sendMail(mailOptions);
@@ -204,36 +210,103 @@ module.exports = {
   //     });
   //   }
   // },
-  verifyEmail : async (req, res) => {
+  verifyEmail: async (req, res) => {
     try {
       const { token } = req.params;
       
       const user = await User.findOne({ verificationToken: token });
+      
       if (!user) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid verification token'
-        });
+        return res.status(400).send(`
+          <html>
+            <head>
+              <title>Verification Failed</title>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  height: 100vh;
+                  margin: 0;
+                  background-color: #f5f5f5;
+                }
+                .container {
+                  text-align: center;
+                  padding: 40px;
+                  background-color: white;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                h1 {
+                  color: #dc3545;
+                  margin-bottom: 20px;
+                }
+                p {
+                  color: #666;
+                  font-size: 18px;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>❌ Verification Failed</h1>
+                <p>Invalid or expired verification link.</p>
+                <p>Please request a new verification email.</p>
+              </div>
+            </body>
+          </html>
+        `);
       }
   
       user.verified = true;
       user.verificationToken = undefined;
       await user.save();
   
-      // Redirect to frontend success page
-      return res.redirect(`${process.env.FRONTEND_URL}/verification-success`);
-      
-      // Or return JSON if frontend handles the response
-      /*return res.status(200).json({
-        success: true,
-        message: 'Email verified successfully'
-      });*/
+      // Redirect to success page
+      res.redirect('/verification-success');
     } catch (error) {
-      console.error('Verification error:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Email verification failed'
-      });
+      console.error('Error verifying email:', error);
+      res.status(500).send(`
+        <html>
+          <head>
+            <title>Verification Error</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+                background-color: #f5f5f5;
+              }
+              .container {
+                text-align: center;
+                padding: 40px;
+                background-color: white;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              }
+              h1 {
+                color: #dc3545;
+                margin-bottom: 20px;
+              }
+              p {
+                color: #666;
+                font-size: 18px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>⚠️ Error</h1>
+              <p>Something went wrong while verifying your email.</p>
+              <p>Please try again later.</p>
+            </div>
+          </body>
+        </html>
+      `);
     }
   },
   // -------------------------------
