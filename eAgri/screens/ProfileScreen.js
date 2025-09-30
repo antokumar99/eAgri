@@ -67,12 +67,20 @@ export default function ProfileScreen() {
       icon: "log-out-outline",
       onPress: async () => {
         try {
-          await AsyncStorage.removeItem("token");
-          console.log("Logged out");
-          navigation.replace("Login");
+          // await AsyncStorage.removeItem("token");
+          // console.log("Logged out");
+          // navigation.replace("Login");
+          // Clear the location data
+          global.userLocation = null;
+          
+          // Clear the token and other data
+          await AsyncStorage.clear();
+          
+          // Navigate to login
+          navigation.replace('Login');
         } catch (error) {
-          console.error("Error logging out:", error);
-          Alert.alert("Error", "Failed to logout");
+          console.error('Error logging out:', error);
+          Alert.alert('Error', 'Failed to log out');
         }
       },
     },

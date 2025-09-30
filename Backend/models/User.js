@@ -60,8 +60,22 @@ const userSchema = new mongoose.Schema({
         default: false
     },
     verificationToken:String,
+    location: {
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
+        },
+        coordinates: {
+            type: [Number], // [longitude, latitude]
+            default: [0, 0]
+        }
+    },
 }, {
     timestamps: true // Automatically adds createdAt and updatedAt fields
 });
+
+// Add index for geospatial queries
+userSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('User', userSchema);

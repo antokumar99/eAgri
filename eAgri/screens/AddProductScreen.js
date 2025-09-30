@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { Picker } from "@react-native-picker/picker";
 import api from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MaterialIcons } from "@expo/vector-icons";
+import * as Location from 'expo-location';
 
 const AddProductScreen = ({ navigation }) => {
   const [product, setProduct] = useState({
@@ -29,6 +30,7 @@ const AddProductScreen = ({ navigation }) => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [location, setLocation] = useState(null);
 
   const categories = [
     "Seeds",
@@ -86,6 +88,29 @@ const AddProductScreen = ({ navigation }) => {
     return true;
   };
 
+  const getLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Needed',
+          'Location permission is needed to show your product to nearby customers.'
+        );
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      
+      console.log('Product location:', location.coords);
+      setLocation(location.coords);
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert('Error', 'Could not get location. Your product will be visible to all users.');
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
@@ -127,6 +152,14 @@ const AddProductScreen = ({ navigation }) => {
         });
       }
 
+      // Add location data if available
+      if (location) {
+        formData.append('location', JSON.stringify({
+          type: 'Point',
+          coordinates: [location.longitude, location.latitude] // MongoDB expects [longitude, latitude]
+        }));
+      }
+
       const response = await api.post("/addproducts", formData, {
         headers: {
           Accept: "application/json",
@@ -148,6 +181,10 @@ const AddProductScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    getLocation();
+  }, []);
 
   return (
     <ScrollView style={styles.container}>

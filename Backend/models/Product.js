@@ -62,6 +62,17 @@ const productSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point'
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        required: true
+      }
+    }
   },
   {
     timestamps: true,
@@ -77,5 +88,8 @@ productSchema.pre("save", function (next) {
   }
   next();
 });
+
+// Add geospatial index
+productSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model("Product", productSchema);

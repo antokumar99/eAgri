@@ -16,6 +16,8 @@ import { Picker } from "@react-native-picker/picker";
 import api from "../services/api";
 import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Header from "../components/Header";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const EditProductScreen = ({ route, navigation }) => {
   const { productId } = route.params;
@@ -207,127 +209,131 @@ const EditProductScreen = ({ route, navigation }) => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.form}>
-        <Text style={styles.label}>Product Name</Text>
-        <TextInput
-          style={styles.input}
-          value={product.name}
-          onChangeText={(text) => setProduct({ ...product, name: text })}
-          placeholder="Enter product name"
-        />
+    <SafeAreaView style={styles.container}>
+      <Header title="Update Product Details"/> 
+      <ScrollView >
+        
+        <View style={styles.form}>
+          <Text style={styles.label}>Product Name</Text>
+          <TextInput
+            style={styles.input}
+            value={product.name}
+            onChangeText={(text) => setProduct({ ...product, name: text })}
+            placeholder="Enter product name"
+          />
 
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={product.description}
-          onChangeText={(text) => setProduct({ ...product, description: text })}
-          placeholder="Enter product description"
-          multiline
-          numberOfLines={4}
-        />
+          <Text style={styles.label}>Description</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={product.description}
+            onChangeText={(text) => setProduct({ ...product, description: text })}
+            placeholder="Enter product description"
+            multiline
+            numberOfLines={4}
+          />
 
-        <Text style={styles.label}>Product Type</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={product.productType}
-            onValueChange={(value) =>
-              setProduct({ ...product, productType: value })
-            }
-          >
-            <Picker.Item label="For Sale" value="buy" />
-            <Picker.Item label="For Rent" value="rent" />
-            <Picker.Item label="Both" value="both" />
-          </Picker>
-        </View>
-
-        {(product.productType === "buy" || product.productType === "both") && (
-          <>
-            <Text style={styles.label}>Price (৳)</Text>
-            <TextInput
-              style={styles.input}
-              value={product.price}
-              onChangeText={(text) => setProduct({ ...product, price: text })}
-              placeholder="Enter price"
-              keyboardType="numeric"
-            />
-          </>
-        )}
-
-        {(product.productType === "rent" || product.productType === "both") && (
-          <>
-            <Text style={styles.label}>Rent Price (per day)</Text>
-            <TextInput
-              style={styles.input}
-              value={product.rentPrice}
-              onChangeText={(text) =>
-                setProduct({ ...product, rentPrice: text })
+          <Text style={styles.label}>Product Type</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={product.productType}
+              onValueChange={(value) =>
+                setProduct({ ...product, productType: value })
               }
-              keyboardType="numeric"
-              placeholder="Enter rent price"
-            />
-          </>
-        )}
-
-        <Text style={styles.label}>Category</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={product.category}
-            onValueChange={(value) =>
-              setProduct({ ...product, category: value })
-            }
-          >
-            {categories.map((category) => (
-              <Picker.Item key={category} label={category} value={category} />
-            ))}
-          </Picker>
-        </View>
-
-        <Text style={styles.label}>Stock Quantity</Text>
-        <TextInput
-          style={styles.input}
-          value={product.stock}
-          onChangeText={(text) => setProduct({ ...product, stock: text })}
-          placeholder="Enter stock quantity"
-          keyboardType="numeric"
-        />
-
-        <Text style={styles.label}>Product Image</Text>
-        {product.image && (
-          <View style={styles.imageWrapper}>
-            <Image
-              source={{ uri: product.image }}
-              style={styles.image}
-              resizeMode="cover"
-            />
-            <TouchableOpacity style={styles.changeImage} onPress={pickImage}>
-              <MaterialIcons name="edit" size={20} color="#fff" />
-            </TouchableOpacity>
+            >
+              <Picker.Item label="For Sale" value="buy" />
+              <Picker.Item label="For Rent" value="rent" />
+              <Picker.Item label="Both" value="both" />
+            </Picker>
           </View>
-        )}
 
-        {!product.image && (
-          <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
-            <MaterialIcons
-              name="add-photo-alternate"
-              size={24}
-              color="#008E97"
-            />
-            <Text style={styles.imageButtonText}>Add Image</Text>
+          {(product.productType === "buy" || product.productType === "both") && (
+            <>
+              <Text style={styles.label}>Price (৳)</Text>
+              <TextInput
+                style={styles.input}
+                value={product.price}
+                onChangeText={(text) => setProduct({ ...product, price: text })}
+                placeholder="Enter price"
+                keyboardType="numeric"
+              />
+            </>
+          )}
+
+          {(product.productType === "rent" || product.productType === "both") && (
+            <>
+              <Text style={styles.label}>Rent Price (per day)</Text>
+              <TextInput
+                style={styles.input}
+                value={product.rentPrice}
+                onChangeText={(text) =>
+                  setProduct({ ...product, rentPrice: text })
+                }
+                keyboardType="numeric"
+                placeholder="Enter rent price"
+              />
+            </>
+          )}
+
+          <Text style={styles.label}>Category</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={product.category}
+              onValueChange={(value) =>
+                setProduct({ ...product, category: value })
+              }
+            >
+              {categories.map((category) => (
+                <Picker.Item key={category} label={category} value={category} />
+              ))}
+            </Picker>
+          </View>
+
+          <Text style={styles.label}>Stock Quantity</Text>
+          <TextInput
+            style={styles.input}
+            value={product.stock}
+            onChangeText={(text) => setProduct({ ...product, stock: text })}
+            placeholder="Enter stock quantity"
+            keyboardType="numeric"
+          />
+
+          <Text style={styles.label}>Product Image</Text>
+          {product.image && (
+            <View style={styles.imageWrapper}>
+              <Image
+                source={{ uri: product.image }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+              <TouchableOpacity style={styles.changeImage} onPress={pickImage}>
+                <MaterialIcons name="edit" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {!product.image && (
+            <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
+              <MaterialIcons
+                name="add-photo-alternate"
+                size={24}
+                color="#008E97"
+              />
+              <Text style={styles.imageButtonText}>Add Image</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.submitButton, saving && styles.disabledButton]}
+            onPress={handleSubmit}
+            disabled={saving}
+          >
+            <Text style={styles.submitButtonText}>
+              {saving ? "Updating..." : "Update Product"}
+            </Text>
           </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          style={[styles.submitButton, saving && styles.disabledButton]}
-          onPress={handleSubmit}
-          disabled={saving}
-        >
-          <Text style={styles.submitButtonText}>
-            {saving ? "Updating..." : "Update Product"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 

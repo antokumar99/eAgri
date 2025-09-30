@@ -84,6 +84,11 @@ const productController = {
         productData.rentPrice = parseFloat(rentPrice);
       }
 
+      // Add location if provided
+      if (req.body.location) {
+        productData.location = JSON.parse(req.body.location);
+      }
+
       const newProduct = new Product(productData);
       await newProduct.save();
 
