@@ -37,6 +37,7 @@ import AddProductScreen from "../screens/AddProductScreen";
 import EditProductScreen from "../screens/EditProductScreen";
 import UpdatePostScreen from '../screens/UpdatePostScreen';
 import CommentScreen from "../screens/CommentScreen";
+import TrendingScreen from "../screens/TrendingScreen";
 
 
 const StackNavigator = () => {
@@ -200,6 +201,7 @@ const StackNavigator = () => {
         <Stack.Screen name="EditProduct" component={EditProductScreen} />
         <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
         <Stack.Screen name="CommentScreen" component={CommentScreen} />
+        <Stack.Screen name="TrendingScreen" component={TrendingScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

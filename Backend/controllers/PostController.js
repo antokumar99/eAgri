@@ -90,9 +90,9 @@ exports.createPost = async (req, res) => {
 
 exports.getAllPosts = async (req, res) => {
   try {
-    // Get posts from last 10 days only
+    // Get posts from last 30 days only
     const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate()-10);
+    tenDaysAgo.setDate(tenDaysAgo.getDate()-30);
 
     const posts = await Post.find({
       createdAt: { $gte: tenDaysAgo }

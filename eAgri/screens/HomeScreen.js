@@ -118,8 +118,8 @@ function HomeScreen({ navigation }) {
             />
             <ServiceCard
               iconName="trending-up"
-              title="Community"
-              screenName="CommunityScreen"
+              title="Trending"
+              screenName="TrendingScreen"
             />
           </View>
         </View>

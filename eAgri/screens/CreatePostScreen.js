@@ -20,6 +20,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Header from '../components/Header';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from "../services/api";
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const AddPostScreen = () => {
   const navigation = useNavigation();
@@ -330,158 +332,208 @@ const AddPostScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Header title="Share your thoughts"/>
-          <KeyboardAvoidingView
-        style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={80}
-          >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.container}>
-            <Text style={styles.header}>Create a Post</Text>
-
-            <TextInput
-              style={styles.textInput}
-              placeholder="Share your thoughts..."
-              multiline
-              value={postText}
-              onChangeText={setPostText}
-            />
-
-            <ImagePreview />
-
-            <TouchableOpacity 
-              style={styles.imageButton} 
-              onPress={pickImage}
-            >
-              <Text style={styles.imageButtonText}>
-                {postImage ? 'Change Image' : 'Pick an Image'}
-              </Text>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <SafeAreaView style={styles.safeArea}>
+          <Header title="Create Post" />
+          
+          <View style={styles.mainContent}>
+            {postImage ? (
+              <View style={styles.imageContainer}>
+                <Image source={{ uri: postImage }} style={styles.selectedImage} />
+                <TouchableOpacity 
+                  style={styles.removeImageBtn}
+                  onPress={() => setPostImage(null)}
+                >
+                  <MaterialIcons name="close" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.uploadButton}
+                onPress={pickImage}
+              >
+                <MaterialIcons name="add-photo-alternate" size={40} color="#723CEB" />
+                <Text style={styles.uploadText}>Add Photo</Text>
+                <Text style={styles.uploadSubText}>Share your moments</Text>
+              </TouchableOpacity>
+            )}
 
-            <TouchableOpacity 
-              style={[styles.postButton, isPosting && styles.disabledButton]}
-              onPress={handlePost}
-              disabled={isPosting}
-            >
-              {isPosting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                  <Text style={styles.postButtonText}>Post</Text>
-              )}
-                </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="What's on your mind about farming?"
+                placeholderTextColor="#666"
+                multiline
+                value={postText}
+                onChangeText={setPostText}
+                textAlignVertical="top"
+              />
+            </View>
 
             {isPosting && (
               <View style={styles.progressContainer}>
-                <ActivityIndicator color="#32CD32" />
+                <ActivityIndicator size="large" color="#723CEB" />
                 <Text style={styles.progressText}>
-                  {uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : 'Processing...'}
+                  Creating your post... {uploadProgress}%
                 </Text>
               </View>
             )}
+
+            <TouchableOpacity
+              style={[
+                styles.postButtonContainer,
+                (!postText && !postImage) && styles.disabledButton
+              ]}
+              onPress={handlePost}
+              disabled={!postText && !postImage || isPosting}
+            >
+              <LinearGradient
+                colors={['#7CFC00', '#55DD33', '#ADFF2F']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.gradientButton}
+              >
+                <MaterialIcons name="post-add" size={24} color="#043927" />
+                <Text style={styles.postButtonText}>Share with Community</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
-          </KeyboardAvoidingView>
-    </SafeAreaView>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
-
-export default AddPostScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#f0f5f5',
     paddingTop: Platform.OS === "android" ? 40 : 0,
+    backgroundColor: '#FFFFFF',
   },
-  header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    alignSelf: 'center',
-    marginVertical: 20,
-    color: '#333',
+  safeArea: {
+    flex: 1,
   },
-  textInput: {
-    backgroundColor: '#fff',
-    padding: 16,
-    fontSize: 16,
-    borderRadius: 12,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    marginBottom: 16,
-    minHeight: 100,
-    textAlignVertical: 'top',
+  mainContent: {
+    flex: 1,
+    padding: 20,
+    marginTop: 20,
   },
   imageContainer: {
     position: 'relative',
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#f0f0f0',
-  },
-  previewImage: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'cover',
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    marginBottom: 20,
     borderRadius: 15,
-    width: 30,
-    height: 30,
-    alignItems: 'center',
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  selectedImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 15,
+  },
+  removeImageBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(255, 144, 47, 0.9)',
+    borderRadius: 20,
+    padding: 8,
+    elevation: 3,
+  },
+  uploadButton: {
+    height: 200,
+    backgroundColor: 'rgba(114, 60, 235, 0.05)',
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#723CEB',
+    borderStyle: 'dashed',
     justifyContent: 'center',
-  },
-  removeImageButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  imageButton: {
-    backgroundColor: '#1e90ff',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 16,
     alignItems: 'center',
+    marginBottom: 20,
   },
-  imageButtonText: {
-    fontSize: 16,
-    color: '#fff',
+  uploadText: {
+    marginTop: 10,
+    fontSize: 18,
+    color: '#723CEB',
     fontWeight: '600',
   },
-  postButton: {
-    backgroundColor: '#32CD32',
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
+  uploadSubText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
   },
-  postButtonText: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: 'bold',
+  inputContainer: {
+    backgroundColor: 'rgba(114, 60, 235, 0.03)',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(114, 60, 235, 0.2)',
+    minHeight: 200,
+  },
+  textInput: {
+    fontSize: 16,
+    color: '#06090F',
+    lineHeight: 24,
+    height: 180,
+  },
+  postButtonContainer: {
+    marginTop: 135,
+    overflow: 'hidden',
+    borderRadius: 15,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  gradientButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
   },
   disabledButton: {
-    opacity: 0.7
+    opacity: 0.6,
+  },
+  postButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
   progressContainer: {
     position: 'absolute',
     top: '50%',
     left: '50%',
-    transform: [{ translateX: -50 }, { translateY: -50 }],
+    transform: [{ translateX: -75 }, { translateY: -75 }],
+    backgroundColor: '#FFFFFF',
+    padding: 25,
+    borderRadius: 15,
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 20,
-    borderRadius: 10,
     elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    width: 150,
+    height: 150,
+    justifyContent: 'center',
   },
   progressText: {
-    marginTop: 10,
-    color: '#32CD32',
+    marginTop: 15,
+    color: '#723CEB',
     fontWeight: 'bold',
-  }
+    fontSize: 14,
+    textAlign: 'center',
+  },
 });
+
+export default AddPostScreen;

@@ -10,11 +10,16 @@ import {
   Platform,
   ActivityIndicator,
   Image,
-  RefreshControl
+  RefreshControl,
+  ImageBackground,
+  Dimensions
 } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from 'expo-linear-gradient';
 import api from "../services/api";
 import Header from "../components/Header";
+
+const { width } = Dimensions.get('window');
 
 const CommunityFeed = ({ navigation }) => {
   const [search, setSearch] = useState("");
@@ -31,13 +36,10 @@ const CommunityFeed = ({ navigation }) => {
   const fetchPosts = async () => {
     try {
       const response = await api.get("/posts");
-      //console.log('Full posts response:', response.data);  // to show the post data
-      
       if (response.data.success) {
-        const postsWithImages = response.data.data.map(post => {
-          //console.log('Full post data:', post);  // to show the post data
-          return post;
-        });
+        const postsWithImages = response.data.data
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .map(post => post);
         setPosts(postsWithImages);
         setOriginalPosts(postsWithImages);
       }
@@ -54,9 +56,10 @@ const CommunityFeed = ({ navigation }) => {
       setPosts(originalPosts);
       return;
     }
-    
+
     const filteredPosts = originalPosts.filter((post) =>
-      post.text.toLowerCase().includes(search.toLowerCase())
+      post.text.toLowerCase().includes(search.toLowerCase()) ||
+    (post.userId?.name && post.userId.name.toLowerCase().includes(search.toLowerCase()))
     );
     setPosts(filteredPosts);
   };
@@ -92,72 +95,86 @@ const CommunityFeed = ({ navigation }) => {
     fetchPosts(); // This will refresh the posts and comment counts
   };
 
+  const formatDate = (dateString) => {
+    const now = new Date();
+    const postDate = new Date(dateString);
+    const diffTime = Math.abs(now - postDate);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+
+    if (diffDays > 0) {
+      return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+    } else if (diffHours > 0) {
+      return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+    } else {
+      return `${diffMinutes} ${diffMinutes === 1 ? 'minute' : 'minutes'} ago`;
+    }
+  };
+
   const renderPost = ({ item }) => {
-    const createdAt = new Date(item.createdAt).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-
-   // console.log('Post data:', item);  // to show the post data
-
     return (
       <View style={styles.postCard}>
-        <View style={styles.postHeader}>
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{item.userId?.name || "Anonymous"}</Text>
-            <Text style={styles.postTime}>{createdAt}</Text>
+        <LinearGradient
+          colors={['#ffffff', '#f8f9fa']}
+          style={styles.gradientBackground}
+        >
+          <View style={styles.postHeader}>
+            <View style={styles.userInfoContainer}>
+              <View style={styles.userAvatar}>
+                <Text style={styles.avatarText}>
+                  {item.userId?.name?.charAt(0).toUpperCase() || 'A'}
+                </Text>
+              </View>
+              <View style={styles.userInfo}>
+                <Text style={styles.userName}>{item.userId?.name || "Anonymous"}</Text>
+                <Text style={styles.postTime}>{formatDate(item.createdAt)}</Text>
+              </View>
+            </View>
           </View>
-        </View>
 
-        <Text style={styles.postContent}>{item.text}</Text>
+          <Text style={styles.postContent}>{item.text}</Text>
 
-        {item.imageUrl && (
-          <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: item.imageUrl }}
-              style={styles.postImage}
-              resizeMode="cover"
-              onError={(error) => {
-                console.error('Image loading error:', error);
-                console.log('Failed image URL:', item.imageUrl);
-              }}
-            />
+          {item.imageUrl && (
+            <View style={styles.imageContainer}>
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.postImage}
+                resizeMode="cover"
+              />
+            </View>
+          )}
+
+          <View style={styles.postActions}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleLike(item._id)}
+            >
+              <MaterialIcons
+                name={likedPosts.has(item._id) ? "favorite" : "favorite-border"}
+                size={24}
+                color={likedPosts.has(item._id) ? "#FF902F" : "#666"}
+              />
+              <Text style={styles.actionText}>
+                {item.likes?.length || 0}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => navigation.navigate('CommentScreen', {
+                postId: item._id,
+                postOwnerId: item.userId._id,
+                onCommentUpdate: handleCommentUpdate
+              })}
+            >
+              <MaterialIcons name="chat-bubble-outline" size={22} color="#666" />
+              <Text style={styles.actionText}>
+                {item.commentsCount || 0}
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
-
-        <View style={styles.postActions}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => handleLike(item._id)}
-          >
-            <FontAwesome 
-              name={likedPosts.has(item._id) ? "thumbs-up" : "thumbs-o-up"} 
-              size={20} 
-              color={likedPosts.has(item._id) ? "#28a745" : "#666"} 
-            />
-            <Text style={[
-              styles.actionText,
-              likedPosts.has(item._id) && styles.actionTextActive
-            ]}>
-              {item.likes?.length || 0} Likes
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('CommentScreen', { 
-              postId: item._id,
-              postOwnerId: item.userId._id,
-              onCommentUpdate: handleCommentUpdate
-            })}
-          >
-            <FontAwesome name="comment" size={20} color="#666" />
-            <Text style={styles.actionText}>
-              {item.commentsCount || 0} Comments
-            </Text>
-          </TouchableOpacity>
-        </View>
+        </LinearGradient>
       </View>
     );
   };
@@ -171,21 +188,37 @@ const CommunityFeed = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Community Feed</Text>
-        <TouchableOpacity
-          style={styles.newPostButton}
-          onPress={() => navigation.navigate("CreatePost")}
-        >
-          <FontAwesome name="plus-circle" size={24} color="#fff" />
-          <Text style={styles.newPostText}>New Post</Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={styles.container}> 
+      <LinearGradient
+            colors={['#134E5E', '#71B280']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.headerGradient}
+          >
+        <View style={styles.header}>
+          
+          <Text style={styles.headerTitle}>Community Feed</Text>
+          <TouchableOpacity
+            style={styles.newPostButton}
+            onPress={() => navigation.navigate("CreatePost")}
+          >
+            <LinearGradient
+              colors={['#2AAF62', '#1E8449']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.gradientButton}
+            >
+              <MaterialIcons name="post-add" size={24} color="#FFFFFF" />
+              <Text style={styles.newPostText}>New Post</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+            
+        </View>
+      </LinearGradient>
+        
 
-      {/* Search Bar */}
       <View style={styles.searchContainer}>
+        <MaterialIcons name="search" size={24} color="#666" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search posts..."
@@ -193,12 +226,8 @@ const CommunityFeed = ({ navigation }) => {
           onChangeText={setSearch}
           onSubmitEditing={handleSearch}
         />
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <FontAwesome name="search" size={20} color="#fff" />
-        </TouchableOpacity>
       </View>
 
-      {/* Post List */}
       <FlatList
         data={posts}
         renderItem={renderPost}
@@ -208,14 +237,17 @@ const CommunityFeed = ({ navigation }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#28a745"]}
-            tintColor="#28a745"
+            colors={["#723CEB"]}
+            tintColor="#723CEB"
           />
         }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            {loading ? "Loading posts..." : "No posts found. Try searching again."}
-          </Text>
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="post-add" size={50} color="#666" />
+            <Text style={styles.emptyText}>
+              {loading ? "Loading posts..." : "No posts found"}
+            </Text>
+          </View>
         }
       />
     </SafeAreaView>
@@ -225,131 +257,180 @@ const CommunityFeed = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
-    padding: 16,
+    backgroundColor: "#F7F9F7",
+  },
+  headerGradient: {
     paddingTop: Platform.OS === "android" ? 40 : 0,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    
   },
-  headerText: {
+  
+  headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
+    color: "#FFFFFF",
+  },
+  gradientButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
   },
   newPostButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#28a745",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    overflow: 'hidden',
+    borderRadius: 25,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   newPostText: {
-    color: "#fff",
+    color: "#FFFFFF",
     marginLeft: 8,
-    fontWeight: "bold",
+    fontWeight: "600",
+    fontSize: 15,
   },
   searchContainer: {
     flexDirection: "row",
-    marginBottom: 16,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    overflow: "hidden",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    margin: 16,
+    borderRadius: 12,
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: '#E8F5E9',
+    elevation: 1,
+  },
+  searchIcon: {
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    padding: 10,
+    paddingVertical: 12,
     fontSize: 16,
-  },
-  searchButton: {
-    backgroundColor: "#007bff",
-    paddingHorizontal: 16,
-    justifyContent: "center",
-    alignItems: "center",
+    color: '#2D6A4F',
   },
   postList: {
-    paddingBottom: 20,
-  },
-  emptyText: {
-    textAlign: "center",
-    marginTop: 20,
-    fontSize: 16,
-    color: "#777",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f8f9fa",
+    paddingHorizontal: 16,
   },
   postCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
     marginBottom: 16,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: "#2D6A4F",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: '#E8F5E9',
+  },
+  gradientBackground: {
+    padding: 16,
+  },
+  userInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  userAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#48c574',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   userInfo: {
-    flexDirection: "column",
+    flex: 1,
   },
   userName: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
+    fontWeight: "700",
+    color: "#2D6A4F",
   },
   postTime: {
-    fontSize: 12,
-    color: "#666",
+    fontSize: 13,
+    color: "#74A588",
     marginTop: 2,
   },
   postContent: {
-    fontSize: 14,
-    color: "#444",
+    fontSize: 15,
+    color: "#06090F",
+    lineHeight: 22,
     marginVertical: 12,
-    lineHeight: 20,
+  },
+  imageContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
   },
   postImage: {
     width: '100%',
-    height: '100%',
+    height: 200,
+    backgroundColor: '#F7F9F7',
   },
   postActions: {
     flexDirection: "row",
-    justifyContent: "space-around",
     borderTopWidth: 1,
-    borderTopColor: "#eee",
+    borderTopColor: '#E8F5E9',
     paddingTop: 12,
     marginTop: 8,
   },
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
+    marginRight: 24,
+    backgroundColor: '#F7F9F7',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
   },
   actionText: {
-    marginLeft: 8,
-    color: "#666",
+    marginLeft: 6,
+    color: "#2D6A4F",
     fontSize: 14,
+    fontWeight: '600',
   },
-  imageContainer: {
-    width: '100%',
-    height: 200,
-    marginVertical: 8,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#f0f0f0',
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: '#F7F9F7',
+    borderRadius: 12,
+    margin: 16,
+    borderWidth: 1,
+    borderColor: '#E8F5E9',
   },
-  actionTextActive: {
-    color: '#28a745',
-    fontWeight: 'bold',
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#2D6A4F",
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
   },
 });
 
