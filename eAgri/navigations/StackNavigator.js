@@ -38,6 +38,8 @@ import EditProductScreen from "../screens/EditProductScreen";
 import UpdatePostScreen from '../screens/UpdatePostScreen';
 import CommentScreen from "../screens/CommentScreen";
 import TrendingScreen from "../screens/TrendingScreen";
+import PeopleProfileScreen from "../screens/PeopleProfileScreen";
+import ChatScreen from "../screens/ChatScreen";
 
 
 const StackNavigator = () => {
@@ -202,6 +204,8 @@ const StackNavigator = () => {
         <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
         <Stack.Screen name="CommentScreen" component={CommentScreen} />
         <Stack.Screen name="TrendingScreen" component={TrendingScreen} />
+        <Stack.Screen name="PeopleProfileScreen" component={PeopleProfileScreen} />
+        <Stack.Screen name="ChatScreen" component={ChatScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

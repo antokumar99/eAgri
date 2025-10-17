@@ -242,7 +242,7 @@ const AddPostScreen = () => {
 
       const response = await api.postFormData('/posts', formData, {
         onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          const percentCompleted = Math.round((progressEvent.loaded * 10) / progressEvent.total);
           console.log('Upload progress:', percentCompleted, '%');
           setUploadProgress(percentCompleted);
           

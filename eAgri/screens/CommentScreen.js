@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   ScrollView,
-  Platform
+  Platform,
+  Keyboard
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import api from '../services/api';
@@ -24,6 +25,7 @@ const CommentScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [replyTo, setReplyTo] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     fetchUserData();
@@ -37,6 +39,21 @@ const CommentScreen = ({ route, navigation }) => {
 
     return unsubscribe;
   }, [navigation]);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+    });
+
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+    };
+  }, []);
 
   const fetchUserData = async () => {
     try {
@@ -235,10 +252,7 @@ const CommentScreen = ({ route, navigation }) => {
         contentContainerStyle={styles.commentsList}
       />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 60}
-      >
+      <View style={[styles.bottomContainer, { marginBottom: keyboardHeight > 0 ? keyboardHeight - 20 : 0 }]}>
         {replyTo && (
           <View style={styles.replyingTo}>
             <Text>Replying to {replyTo.userId.name}</Text>
@@ -255,6 +269,7 @@ const CommentScreen = ({ route, navigation }) => {
             value={comment}
             onChangeText={setComment}
             multiline
+            textAlignVertical="top"
           />
           <TouchableOpacity 
             style={styles.sendButton} 
@@ -263,7 +278,7 @@ const CommentScreen = ({ route, navigation }) => {
             <FontAwesome name="send" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 };
@@ -340,6 +355,9 @@ const styles = StyleSheet.create({
   deleteText: {
     color: '#dc3545',
   },
+  bottomContainer: {
+    backgroundColor: '#fff',
+  },
   replyingTo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -350,11 +368,13 @@ const styles = StyleSheet.create({
     borderTopColor: '#dee2e6',
   },
   inputContainer: {
+    marginBottom: 35,
     flexDirection: 'row',
     padding: 12,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#dee2e6',
+    paddingBottom: 40,
   },
   input: {
     flex: 1,

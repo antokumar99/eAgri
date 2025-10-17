@@ -84,6 +84,11 @@ const productController = {
         productData.rentPrice = parseFloat(rentPrice);
       }
 
+      // For rent-only products, set price to 0 if not provided
+      if (productType === "rent" && !price) {
+        productData.price = 0;
+      }
+
       // Add location if provided
       if (req.body.location) {
         productData.location = JSON.parse(req.body.location);

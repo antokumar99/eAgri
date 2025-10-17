@@ -13,12 +13,17 @@ const productSchema = new mongoose.Schema(
     },
     price: {
       type: Number,
-      required: true,
+      required: function() {
+        return this.productType === 'buy' || this.productType === 'both';
+      },
       min: 0,
     },
     rentPrice: {
       // Price per day for rental
       type: Number,
+      required: function() {
+        return this.productType === 'rent' || this.productType === 'both';
+      },
       min: 0,
     },
     category: {

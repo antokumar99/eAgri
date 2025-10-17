@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../services/api";
 import Header from "../components/Header";
 
@@ -28,10 +29,26 @@ const CommunityFeed = ({ navigation }) => {
   const [originalPosts, setOriginalPosts] = useState([]); // For search functionality
   const [refreshing, setRefreshing] = useState(false);
   const [likedPosts, setLikedPosts] = useState(new Set());
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
+    fetchCurrentUser();
     fetchPosts();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (token) {
+        const response = await api.get("/profile");
+        if (response.data.success) {
+          setCurrentUserId(response.data.data._id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching current user:", error);
+    }
+  };
 
   const fetchPosts = async () => {
     try {
@@ -95,6 +112,19 @@ const CommunityFeed = ({ navigation }) => {
     fetchPosts(); // This will refresh the posts and comment counts
   };
 
+  const handleUserNamePress = (userId, userName) => {
+    if (userId === currentUserId) {
+      // Navigate to own profile
+      navigation.navigate('Profile');
+    } else {
+      // Navigate to other user's profile
+      navigation.navigate('PeopleProfileScreen', {
+        userId: userId,
+        userName: userName
+      });
+    }
+  };
+
   const formatDate = (dateString) => {
     const now = new Date();
     const postDate = new Date(dateString);
@@ -127,7 +157,12 @@ const CommunityFeed = ({ navigation }) => {
                 </Text>
               </View>
               <View style={styles.userInfo}>
-                <Text style={styles.userName}>{item.userId?.name || "Anonymous"}</Text>
+                <TouchableOpacity 
+                  onPress={() => handleUserNamePress(item.userId?._id, item.userId?.name)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.userName}>{item.userId?.name || "Anonymous"}</Text>
+                </TouchableOpacity>
                 <Text style={styles.postTime}>{formatDate(item.createdAt)}</Text>
               </View>
             </View>

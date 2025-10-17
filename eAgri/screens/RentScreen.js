@@ -40,13 +40,15 @@ const RentScreen = ({ navigation }) => {
     try {
       const response = await api.get("/products", {
         params: {
-          type: ["Rent", "both"],
-          category: selectedCategory !== "all" ? selectedCategory : undefined,
+          type: ["rent", "both"],
         },
       });
-      setProducts(response.data.products);
+      
+      setProducts(response.data.products || []);
+      //console.log('Fetched products:', response.data.products?.length || 0);
     } catch (error) {
       console.error("Error fetching products:", error);
+      setProducts([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -57,6 +59,11 @@ const RentScreen = ({ navigation }) => {
     setRefreshing(true);
     fetchProducts();
   };
+
+  // const handleCategorySelect = (category) => {
+  //   // console.log('Category selected:', category);
+  //   ;
+  // };
 
   const renderProduct = ({ item }) => (
     <TouchableOpacity
@@ -79,11 +86,17 @@ const RentScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
-  const filteredProducts = products.filter(
-    (product) =>
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = 
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      product.description.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesCategory = 
+      selectedCategory === "all" || 
+      product.category.toLowerCase() === selectedCategory.toLowerCase();
+    
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <SafeAreaView style={styles.container}>
