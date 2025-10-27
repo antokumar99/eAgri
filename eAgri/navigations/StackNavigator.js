@@ -40,6 +40,7 @@ import CommentScreen from "../screens/CommentScreen";
 import TrendingScreen from "../screens/TrendingScreen";
 import PeopleProfileScreen from "../screens/PeopleProfileScreen";
 import ChatScreen from "../screens/ChatScreen";
+import MessagesScreen from "../screens/MessagesScreen";
 
 
 const StackNavigator = () => {
@@ -136,6 +137,21 @@ const StackNavigator = () => {
           }}
         />
         <Tab.Screen
+          name="Messages"
+          component={MessagesScreen}
+          options={{
+            tabBarLabel: "Messages",
+            tabBarLabelStyle: { color: "#008E97" },
+            headerShown: false,
+            tabBarIcon: ({ focused }) =>
+              focused ? (
+                <Ionicons name="chatbubbles" size={24} color="#008E97" />
+              ) : (
+                <Ionicons name="chatbubbles-outline" size={24} color="black" />
+              ),
+          }}
+        />
+        <Tab.Screen
           name="Profile"
           component={ProfileScreen}
           options={{
@@ -205,6 +221,7 @@ const StackNavigator = () => {
         <Stack.Screen name="CommentScreen" component={CommentScreen} />
         <Stack.Screen name="TrendingScreen" component={TrendingScreen} />
         <Stack.Screen name="PeopleProfileScreen" component={PeopleProfileScreen} />
+        <Stack.Screen name="MessagesScreen" component={MessagesScreen} />
         <Stack.Screen name="ChatScreen" component={ChatScreen} />
       </Stack.Navigator>
     </NavigationContainer>

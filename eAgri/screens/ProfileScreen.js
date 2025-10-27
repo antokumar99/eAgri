@@ -21,6 +21,7 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Header from "../components/Header";
 import api from "../services/api";
+import chatService from "../services/chatService";
 
 const { width, height } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.8;
@@ -67,20 +68,24 @@ export default function ProfileScreen() {
       icon: "log-out-outline",
       onPress: async () => {
         try {
-          // await AsyncStorage.removeItem("token");
-          // console.log("Logged out");
-          // navigation.replace("Login");
+          console.log('Starting logout process...');
+          
+          // Logout from chat service first (sets presence to offline, cleans up subscriptions)
+          await chatService.logout();
+          
           // Clear the location data
           global.userLocation = null;
           
-          // Clear the token and other data
+          // Clear all AsyncStorage data (token, user data, etc.)
           await AsyncStorage.clear();
+          
+          console.log('Logout completed successfully');
           
           // Navigate to login
           navigation.replace('Login');
         } catch (error) {
           console.error('Error logging out:', error);
-          Alert.alert('Error', 'Failed to log out');
+          Alert.alert('Error', 'Failed to log out completely. Please try again.');
         }
       },
     },
@@ -399,7 +404,7 @@ export default function ProfileScreen() {
             <View style={styles.farmInfo}>
               <Text style={styles.farmTitle}>{userData?.data?.farm.title}</Text>
               <Text style={styles.farmExperience}>
-                {userData.farm.experience} years of experience
+                {userData?.data?.farm?.experience} years of experience
               </Text>
             </View>
           )}

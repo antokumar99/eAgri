@@ -50,17 +50,26 @@ const LoginScreen = () => {
       });
 
       if (response.data.success) {
-        const { token } = response.data;
+        const { token, user } = response.data;
         
         // Log the token before storing
         console.log('Received token:', token);
+        console.log('Received user:', user);
         
-        // Store the token
+        // Store both token and user data
         await AsyncStorage.setItem('token', token);
+        await AsyncStorage.setItem('user', JSON.stringify({
+          _id: user._id,
+          username: user.name || user.email.split('@')[0], // Use name or fallback to email prefix
+          email: user.email,
+          avatar: user.avatar || null
+        }));
         
-        // Verify the token was stored
+        // Verify the data was stored
         const storedToken = await AsyncStorage.getItem('token');
+        const storedUser = await AsyncStorage.getItem('user');
         console.log('Stored token:', storedToken);
+        console.log('Stored user data:', storedUser);
         
         // Navigate to home screen
         navigation.replace('Main');
