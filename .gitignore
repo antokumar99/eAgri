@@ -32,5 +32,9 @@ yarn-error.*
 # local env files
 .env*.local
 
+# Environment configuration files (contains API keys)
+eAgri/config/env.js
+config/env.js
+
 # typescript
 *.tsbuildinfo
