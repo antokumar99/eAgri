@@ -240,6 +240,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import Header from "../components/Header";
+import ENV_CONFIG from "../config/env";
 
 // Using custom chart implementation (no external dependencies needed)
 
@@ -250,7 +251,7 @@ const WeatherScreen = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const API_KEY = "07c774a8e416591ff63adaa7fd7be489";
+  const API_KEY = ENV_CONFIG.OPENWEATHER_API_KEY;
   const BASE_URL = "https://pro.openweathermap.org/data/2.5";
 
   // Weather condition to icon mapping
