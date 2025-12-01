@@ -8,233 +8,359 @@ import {
   StatusBar,
   Platform,
   SafeAreaView,
+  Animated,
 } from "react-native";
-import React from "react";
-import { MaterialIcons } from "@expo/vector-icons"; // For icons
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { MaterialIcons, Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import ServiceCard from "../components/ServiceCard";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 function HomeScreen({ navigation }) {
   const [weather, setWeather] = useState(null);
+  const [userName, setUserName] = useState("Farmer");
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
 
-  // Fetch current weather data
-  // const fetchWeather = async () => {
-  //   try {
-  //     const response = await axios.get(
-  //       `https://api.openweathermap.org/data/2.5/weather?q=Dhaka&units=metric&appid=YOUR_API_KEY`
-  //     );
-  //     setWeather(response.data);
-  //   } catch (error) {
-  //     console.error("Error fetching weather data:", error);
-  //   }
-  // };
+  useEffect(() => {
+    // Animate content on mount
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-  // useEffect(() => {
-  //   fetchWeather(); // Fetch weather when the component mounts
-  // }, []);
+    // Fetch user data
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      const userData = await AsyncStorage.getItem("user");
+      if (userData) {
+        const user = JSON.parse(userData);
+        setUserName(user.username || user.name || "Farmer");
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
+  };
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem("userToken");
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
       navigation.replace("Login");
     } catch (error) {
       console.log(error);
     }
   };
 
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <View style={styles.headerTop}>
+        <View style={styles.greetingContainer}>
+          <Text style={styles.greeting}>Good Morning!</Text>
+          <Text style={styles.userName}>{userName}</Text>
+        </View>
+        <TouchableOpacity style={styles.profileButton}>
+          <FontAwesome5 name="user-circle" size={30} color="#4CAF50" />
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.headerSubtitle}>Ready to grow your farm today?</Text>
+    </View>
+  );
+
+  const renderWeatherCard = () => (
+    <TouchableOpacity
+      style={styles.weatherCard}
+      onPress={() => navigation.navigate("Weather", { city: "Dhaka" })}
+    >
+      <View style={styles.weatherContent}>
+        <View style={styles.weatherInfo}>
+          <Text style={styles.weatherTitle}>Today's Weather</Text>
+          <Text style={styles.weatherTemp}>28°C</Text>
+          <Text style={styles.weatherDesc}>Sunny</Text>
+        </View>
+        <View style={styles.weatherIcon}>
+          <Ionicons name="sunny" size={40} color="#FFD700" />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderQuickStats = () => (
+    <View style={styles.statsContainer}>
+      <View style={styles.statCard}>
+        <MaterialIcons name="trending-up" size={24} color="#4CAF50" />
+        <Text style={styles.statNumber}>12</Text>
+        <Text style={styles.statLabel}>Active Crops</Text>
+      </View>
+      <View style={styles.statCard}>
+        <MaterialIcons name="water-drop" size={24} color="#2196F3" />
+        <Text style={styles.statNumber}>85%</Text>
+        <Text style={styles.statLabel}>Soil Moisture</Text>
+      </View>
+      <View style={styles.statCard}>
+        <MaterialIcons name="wb-sunny" size={24} color="#FF9800" />
+        <Text style={styles.statNumber}>6.2</Text>
+        <Text style={styles.statLabel}>pH Level</Text>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollviewcontainer}>
-        {/* Header */}
-        {/* <View style={styles.header}>
-          <View style={styles.statusBar}>
-            <Text style={styles.time}>10:37 PM</Text>
-            <Text style={styles.network}>4.0KB/s</Text>
-            <MaterialIcons name="wifi" size={16} color="black" />
-          </View>
-          <Text style={styles.pageTitle}>হোম</Text>
-        </View> */}
-
-        <TouchableOpacity
-          style={styles.weatherCard}
-          onPress={() => navigation.navigate("Weather", { city: "Dhaka" })} // Navigate to the Weather screen
+      <Animated.View
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.weatherTitle}>Today's Weather</Text>
-          {/* {weather ? (
-              <View>
-                <Text style={styles.weatherTemp}>
-                  {weather.main.temp}°C - {weather.weather[0].description}
-                </Text>
+          {renderHeader()}
+          {renderWeatherCard()}
+          {renderQuickStats()}
+
+          <View style={styles.servicesSection}>
+            <Text style={styles.sectionTitle}>Services</Text>
+            <View style={styles.services}>
+              <View style={styles.serviceRow}>
+                <ServiceCard
+                  iconName="post-add"
+                  title="Add Post"
+                  screenName="CreatePost"
+                  color="#4CAF50"
+                />
+                <ServiceCard
+                  iconName="key"
+                  title="Rent"
+                  screenName="RentScreen"
+                  color="#FF9800"
+                />
               </View>
-            ) : (
-              <Text style={styles.weatherLoading}>Loading...</Text>
-            )} */}
-        </TouchableOpacity>
+              <View style={styles.serviceRow}>
+                <ServiceCard
+                  iconName="attach-money"
+                  title="Marketplace"
+                  screenName="BuyScreen"
+                  color="#2196F3"
+                />
+                <ServiceCard
+                  iconName="shopping-cart"
+                  title="Sell"
+                  screenName="SellScreen"
+                  color="#9C27B0"
+                />
+              </View>
+              <View style={styles.serviceRow}>
+                <ServiceCard
+                  iconName="school"
+                  title="Research"
+                  screenName="ResearchScreen"
+                  color="#607D8B"
+                />
+                <ServiceCard
+                  iconName="trending-up"
+                  title="Trending"
+                  screenName="TrendingScreen"
+                  color="#E91E63"
+                />
+              </View>
+            </View>
+          </View>
 
-        {/* Services Section */}
-        {/* <View style={styles.services}>
-          <View style={styles.serviceRow}>
-            <ServiceCard iconName="person-outline" title="কৃষি পরামর্শ" />
-            <ServiceCard iconName="key" title="ভাড়া" />
+          <View style={styles.tipsSection}>
+            <Text style={styles.sectionTitle}>Today's Tips</Text>
+            <View style={styles.tipCard}>
+              <MaterialIcons name="lightbulb" size={24} color="#FFD700" />
+              <Text style={styles.tipText}>
+                Water your crops early in the morning to reduce evaporation and
+                fungal growth.
+              </Text>
+            </View>
           </View>
-          <View style={styles.serviceRow}>
-            <ServiceCard iconName="attach-money" title="ক্রয়" />
-            <ServiceCard iconName="shopping-cart" title="বিক্রয়" />
-          </View>
-          <View style={styles.serviceRow}>
-            <ServiceCard iconName="school" title="প্রশিক্ষণ" />
-            <ServiceCard iconName="trending-up" title="বিনিয়োগ" />
-          </View>
-        </View> */}
-        <View style={styles.services}>
-          <View style={styles.serviceRow}>
-            <ServiceCard
-              iconName="post-add"
-              title="Add Post"
-              screenName="CreatePost"
-            />
-            {/* <ServiceCard iconName="person-outline" title="কৃষি পরামর্শ" screenName="AdviceScreen" /> */}
-            <ServiceCard iconName="key" title="Rent" screenName="RentScreen" />
-          </View>
-          <View style={styles.serviceRow}>
-            <ServiceCard
-              iconName="attach-money"
-              title="Marketplace"
-              screenName="BuyScreen"
-            />
-            <ServiceCard
-              iconName="shopping-cart"
-              title="Sell"
-              screenName="SellScreen"
-            />
-          </View>
-          <View style={styles.serviceRow}>
-            <ServiceCard
-              iconName="school"
-              title="Research"
-              screenName="ResearchScreen"
-            />
-            <ServiceCard
-              iconName="trending-up"
-              title="Trending"
-              screenName="TrendingScreen"
-            />
-          </View>
-        </View>
-
-        {/* Bottom Navigation */}
-      </ScrollView>
-      {/* <View style={styles.navBar}>
-        <NavItem iconName="home" title="হোম" active />
-        <NavItem iconName="group" title="সেবাসমূহ" />
-        <NavItem iconName="chat" title="কৃষি পরামর্শ" />
-        <NavItem iconName="play-circle-outline" title="ভিডিও" />
-    </View> */}
+        </ScrollView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
 
-// const ServiceCard = ({ iconName, title }) => (
-//   <TouchableOpacity style={styles.card}>
-//     <MaterialIcons name={iconName} size={32} color="#4CAF50" />
-//     <Text style={styles.cardText}>{title}</Text>
-//   </TouchableOpacity>
-// );
-
-// const NavItem = ({ iconName, title, active }) => (
-//   <View style={active ? styles.navItemActive : styles.navItem}>
-//     <MaterialIcons name={iconName} size={24} color={active ? "#4CAF50" : "#000"} />
-//     <Text style={active ? styles.navTextActive : styles.navText}>{title}</Text>
-//   </View>
-// );
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#f8f9fa",
     marginTop: 0,
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
-  scrollviewcontainer: {
+  content: {
     flex: 1,
-    backgroundColor: "#f8f8f8",
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
     marginBottom: 75,
   },
-  checkImage: { backgroundColor: " #00b1ff ", marginLeft: 5 },
-  header: { padding: 10, backgroundColor: "#f2f2f2", alignItems: "center" },
-  statusBar: {
+  header: {
+    padding: 20,
+    backgroundColor: "#4CAF50",
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
-    width: "100%",
+    alignItems: "center",
+    marginBottom: 10,
   },
-  time: { fontSize: 12 },
-  network: { fontSize: 12 },
-  pageTitle: { fontSize: 20, fontWeight: "bold", marginVertical: 5 },
-  highlight: {
-    flexDirection: "row",
-    margin: 10,
-    padding: 10,
-    backgroundColor: "#fff",
-    borderRadius: 10,
+  greetingContainer: {
+    flex: 1,
   },
-  image: { width: 150, height: 250, borderRadius: 10 },
-  highlightText: { flex: 1, marginLeft: 10 },
-  title: { fontSize: 16, fontWeight: "bold" },
-  description: { fontSize: 14, color: "#555" },
-  button: {
-    marginTop: 5,
-    backgroundColor: "#4CAF50",
+  greeting: {
+    fontSize: 16,
+    color: "rgba(255, 255, 255, 0.8)",
+    fontWeight: "500",
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  profileButton: {
     padding: 5,
-    borderRadius: 5,
   },
-  buttonText: { color: "#fff", textAlign: "center" },
-  services: { margin: 10 },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.9)",
+    marginTop: 5,
+  },
+  weatherCard: {
+    margin: 20,
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 20,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+  },
+  weatherContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  weatherInfo: {
+    flex: 1,
+  },
+  weatherTitle: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 5,
+  },
+  weatherTemp: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#2c3e50",
+    marginBottom: 5,
+  },
+  weatherDesc: {
+    fontSize: 14,
+    color: "#7f8c8d",
+  },
+  weatherIcon: {
+    alignItems: "center",
+  },
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 15,
+    marginHorizontal: 5,
+    alignItems: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#2c3e50",
+    marginTop: 5,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "#7f8c8d",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  servicesSection: {
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#2c3e50",
+    marginBottom: 15,
+  },
+  services: {
+    marginBottom: 10,
+  },
   serviceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginVertical: 5,
+    marginVertical: 8,
   },
-  card: {
-    flex: 1,
-    alignItems: "center",
-    padding: 10,
+  tipsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  tipCard: {
     backgroundColor: "#fff",
-    borderRadius: 10,
-    margin: 5,
-  },
-  cardText: {
-    marginTop: 5,
-    fontSize: 14,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  navBar: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    padding: 10,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderColor: "#ddd",
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-  },
-  navItem: { alignItems: "center" },
-  navItemActive: { alignItems: "center" },
-  navText: { fontSize: 12, color: "#000" },
-  navTextActive: { fontSize: 12, color: "#4CAF50", fontWeight: "bold" },
-  weatherCard: {
-    margin: 10,
+    borderRadius: 12,
     padding: 20,
-    backgroundColor: "#4CAF50",
-    borderRadius: 10,
-    alignItems: "center",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  weatherTitle: { color: "#fff", fontSize: 18, fontWeight: "bold" },
-  weatherTemp: { color: "#fff", fontSize: 16, marginTop: 10 },
-  weatherLoading: { color: "#fff", fontSize: 14, marginTop: 10 },
+  tipText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#2c3e50",
+    lineHeight: 20,
+    marginLeft: 15,
+  },
 });
 
 export default HomeScreen;

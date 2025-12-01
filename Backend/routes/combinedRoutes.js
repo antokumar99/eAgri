@@ -1,16 +1,16 @@
 const express = require("express");
 const router = express.Router();
-const AuthController = require('../controllers/AuthController');
-const UserController = require('../controllers/UserController');
-const ResearchController = require('../controllers/ResearchController');
-const authMiddleware = require('../middleware/authMiddleware');
-const uploadMiddleware = require('../middleware/uploadMiddleware');
-const PostController = require('../controllers/PostController');
+const AuthController = require("../controllers/AuthController");
+const UserController = require("../controllers/UserController");
+const ResearchController = require("../controllers/ResearchController");
+const authMiddleware = require("../middleware/authMiddleware");
+const uploadMiddleware = require("../middleware/uploadMiddleware");
+const PostController = require("../controllers/PostController");
 const adminController = require("../controllers/AdminController");
 const { productController } = require("../controllers/ProductController");
-//const rentalController = require("../controllers/RentalController");
+const { rentalController } = require("../controllers/RentalController");
 const { orderController } = require("../controllers/OrderController");
-
+const { paymentController } = require("../controllers/paymentController");
 
 // Authentication routes
 router.post("/login", AuthController.login);
@@ -85,12 +85,25 @@ router.post(
 );
 router.get("/posts", PostController.getAllPosts);
 router.post("/posts/:postId/like", authMiddleware, PostController.likePost);
-router.get('/posts/user/:userId', authMiddleware, PostController.getUserPosts);
-router.delete('/posts/:postId', authMiddleware, PostController.deletePost);
-router.put('/posts/:postId', authMiddleware, uploadMiddleware, PostController.updatePost);
-router.get('/posts/:postId/comments', PostController.getComments);
-router.post('/posts/:postId/comments', authMiddleware, PostController.addComment);
-router.delete('/posts/:postId/comments/:commentId', authMiddleware, PostController.deleteComment);
+router.get("/posts/user/:userId", authMiddleware, PostController.getUserPosts);
+router.delete("/posts/:postId", authMiddleware, PostController.deletePost);
+router.put(
+  "/posts/:postId",
+  authMiddleware,
+  uploadMiddleware,
+  PostController.updatePost
+);
+router.get("/posts/:postId/comments", PostController.getComments);
+router.post(
+  "/posts/:postId/comments",
+  authMiddleware,
+  PostController.addComment
+);
+router.delete(
+  "/posts/:postId/comments/:commentId",
+  authMiddleware,
+  PostController.deleteComment
+);
 
 // Product routes
 router.get(
@@ -137,6 +150,21 @@ router.delete(
 );
 router.delete("/cart", authMiddleware, orderController.clearCart);
 
+// Order routes
+router.post("/orders/create", authMiddleware, orderController.createOrder);
+router.get("/orders/my-orders", authMiddleware, orderController.getUserOrders);
+router.get(
+  "/orders/received",
+  authMiddleware,
+  orderController.getReceivedOrders
+);
+router.get("/orders/:orderId", authMiddleware, orderController.getOrderById);
+router.put(
+  "/orders/:orderId/status",
+  authMiddleware,
+  orderController.updateOrderStatus
+);
+
 // Add this route to test authentication
 router.get("/test-auth", authMiddleware, (req, res) => {
   console.log("Test auth endpoint hit");
@@ -149,9 +177,52 @@ router.get("/test-auth", authMiddleware, (req, res) => {
 });
 
 // Rental routes
-// router.post("/rentals", authMiddleware, rentalController.createRental);
-// router.get("/rentals/user", authMiddleware, rentalController.getUserRentals);
-// router.put("/rentals/:rentalId/complete", authMiddleware, rentalController.completeRental);
-// router.put("/rentals/:rentalId/extend", authMiddleware, rentalController.extendRental);
+router.post("/rentals/create", authMiddleware, rentalController.createRental);
+router.get(
+  "/rentals/my-rentals",
+  authMiddleware,
+  rentalController.getUserRentals
+);
+router.get(
+  "/rentals/received",
+  authMiddleware,
+  rentalController.getReceivedRentals
+);
+router.get(
+  "/rentals/:rentalId",
+  authMiddleware,
+  rentalController.getRentalById
+);
+router.put(
+  "/rentals/:rentalId/status",
+  authMiddleware,
+  rentalController.updateRentalStatus
+);
+router.put(
+  "/rentals/:rentalId/extend",
+  authMiddleware,
+  rentalController.extendRental
+);
+router.put(
+  "/rentals/:rentalId/cancel",
+  authMiddleware,
+  rentalController.cancelRental
+);
+router.put(
+  "/rentals/:rentalId/complete",
+  authMiddleware,
+  rentalController.completeRental
+);
+
+// Payment routes
+router.post("/payment", authMiddleware, paymentController.createPayment);
+router.post(
+  "/payment/success",
+  authMiddleware,
+  paymentController.paymentSuccess
+);
+router.post("/payment/fail", authMiddleware, paymentController.paymentFailure);
+router.post("/payment/cancel", authMiddleware, paymentController.paymentCancel);
+router.post("/payment/ipn", paymentController.paymentIPN); // No auth for IPN
 
 module.exports = router;

@@ -78,7 +78,7 @@ const CartScreen = ({ navigation }) => {
       Alert.alert("Cart Empty", "Please add items to cart before checkout");
       return;
     }
-    navigation.navigate("Checkout", { total });
+    navigation.navigate("Checkout", { total, cartItems });
   };
 
   const renderCartItem = ({ item }) => (

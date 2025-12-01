@@ -1,6 +1,7 @@
 const Order = require("../models/Order");
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
+const User = require("../models/User");
 
 const orderController = {
   // Add to cart
@@ -397,6 +398,276 @@ const orderController = {
       res.status(500).json({
         success: false,
         message: "Error clearing cart",
+        error: error.message,
+      });
+    }
+  },
+
+  // Create order for Cash on Delivery
+  createOrder: async (req, res) => {
+    try {
+      const { address, total, cartItems, paymentMethod } = req.body;
+      const userId = req.user.id;
+
+      const user = await User.findById(userId);
+      if (!user) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      // Validate stock availability before creating order
+      for (const item of cartItems) {
+        const product = await Product.findById(item.product);
+        if (!product) {
+          return res.status(404).json({
+            success: false,
+            message: `Product ${item.product} not found`,
+          });
+        }
+
+        if (product.stock < item.quantity) {
+          return res.status(400).json({
+            success: false,
+            message: `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
+          });
+        }
+      }
+
+      const orderProducts = cartItems.map((item) => ({
+        product: item.product,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+
+      const order = new Order({
+        user: userId,
+        products: orderProducts,
+        totalPrice: total,
+        paymentMethod: paymentMethod,
+        status: "Pending",
+        paymentStatus: "Pending",
+        shippingAddress: address,
+        transactionId: `COD_${Date.now()}_${userId}`,
+      });
+
+      await order.save();
+
+      // Reduce stock for each product in the order
+      for (const item of cartItems) {
+        await Product.findByIdAndUpdate(
+          item.product,
+          { $inc: { stock: -item.quantity } },
+          { new: true }
+        );
+      }
+
+      // Clear user's cart
+      await Cart.findOneAndDelete({ user: userId });
+
+      return res.status(200).json({
+        success: true,
+        message: "Order created successfully",
+        orderId: order._id,
+        order: order,
+      });
+    } catch (error) {
+      console.error("Error creating order:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  },
+
+  // Get user's orders (orders placed by the user)
+  getUserOrders: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      const orders = await Order.find({ user: userId })
+        .populate({
+          path: "products.product",
+          select:
+            "name description image price rentPrice productType stock category seller",
+          populate: {
+            path: "seller",
+            select: "name email phone",
+          },
+        })
+        .populate({
+          path: "user",
+          select: "name email phone",
+        })
+        .sort({ createdAt: -1 });
+
+      return res.status(200).json({
+        success: true,
+        message: "Orders retrieved successfully",
+        orders: orders,
+      });
+    } catch (error) {
+      console.error("Error getting user orders:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  },
+
+  // Get received orders (orders where user is the seller)
+  getReceivedOrders: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Find orders where the user is the seller of any product
+      const orders = await Order.find({
+        "products.product": {
+          $in: await Product.find({ seller: userId }).distinct("_id"),
+        },
+      })
+        .populate({
+          path: "products.product",
+          select:
+            "name description image price rentPrice productType stock category seller",
+          populate: {
+            path: "seller",
+            select: "name email phone",
+          },
+        })
+        .populate({
+          path: "user",
+          select: "name email phone",
+        })
+        .sort({ createdAt: -1 });
+
+      return res.status(200).json({
+        success: true,
+        message: "Received orders retrieved successfully",
+        orders: orders,
+      });
+    } catch (error) {
+      console.error("Error getting received orders:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  },
+
+  // Get order by ID
+  getOrderById: async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const userId = req.user.id;
+
+      const order = await Order.findById(orderId)
+        .populate({
+          path: "products.product",
+          select:
+            "name description image price rentPrice productType stock category seller",
+          populate: {
+            path: "seller",
+            select: "name email phone",
+          },
+        })
+        .populate({
+          path: "user",
+          select: "name email phone",
+        });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      // Check if user is authorized to view this order
+      if (order.user._id.toString() !== userId) {
+        // Check if user is the seller of any product in the order
+        const isSeller = order.products.some(
+          (item) => item.product.seller._id.toString() === userId
+        );
+
+        if (!isSeller) {
+          return res.status(403).json({
+            success: false,
+            message: "Not authorized to view this order",
+          });
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Order retrieved successfully",
+        order: order,
+      });
+    } catch (error) {
+      console.error("Error getting order by ID:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  },
+
+  // Update order status (for sellers)
+  updateOrderStatus: async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const { status } = req.body;
+      const userId = req.user.id;
+
+      const order = await Order.findById(orderId);
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      // Check if user is the seller of any product in the order
+      const isSeller = order.products.some(
+        (item) => item.product.seller.toString() === userId
+      );
+
+      if (!isSeller) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to update this order",
+        });
+      }
+
+      const previousStatus = order.status;
+      order.status = status;
+      await order.save();
+
+      // If order is being cancelled, restore stock
+      if (status === "Cancelled" && previousStatus !== "Cancelled") {
+        for (const item of order.products) {
+          await Product.findByIdAndUpdate(
+            item.product,
+            { $inc: { stock: item.quantity } },
+            { new: true }
+          );
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Order status updated successfully",
+        order: order,
+      });
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
         error: error.message,
       });
     }

@@ -21,9 +21,8 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Header from "../components/Header";
 import api from "../services/api";
-import chatService from "../services/chatService";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 const DRAWER_WIDTH = width * 0.8;
 const drawerAnimation = new Animated.Value(0);
 
@@ -52,40 +51,54 @@ export default function ProfileScreen() {
     },
     {
       id: 3,
-      label: "Order History",
+      label: "My Orders",
       icon: "document-text-outline",
-      onPress: () => navigation.navigate("OrderHistory"),
+      onPress: () => navigation.navigate("MyOrders"),
     },
     {
       id: 4,
+      label: "Received Orders",
+      icon: "document-text-outline",
+      onPress: () => navigation.navigate("ReceivedOrders"),
+    },
+    {
+      id: 5,
+      label: "My Rentals",
+      icon: "time-outline",
+      onPress: () => navigation.navigate("MyRentals"),
+    },
+    {
+      id: 6,
+      label: "Received Rentals",
+      icon: "time-outline",
+      onPress: () => navigation.navigate("ReceivedRentals"),
+    },
+    {
+      id: 7,
       label: "Settings",
       icon: "settings-outline",
       onPress: () => navigation.navigate("Settings"),
     },
     {
-      id: 5,
+      id: 8,
       label: "Logout",
       icon: "log-out-outline",
       onPress: async () => {
         try {
-          console.log('Starting logout process...');
-          
-          // Logout from chat service first (sets presence to offline, cleans up subscriptions)
-          await chatService.logout();
-          
+          // await AsyncStorage.removeItem("token");
+          // console.log("Logged out");
+          // navigation.replace("Login");
           // Clear the location data
           global.userLocation = null;
-          
-          // Clear all AsyncStorage data (token, user data, etc.)
+
+          // Clear the token and other data
           await AsyncStorage.clear();
-          
-          console.log('Logout completed successfully');
-          
+
           // Navigate to login
-          navigation.replace('Login');
+          navigation.replace("Login");
         } catch (error) {
-          console.error('Error logging out:', error);
-          Alert.alert('Error', 'Failed to log out completely. Please try again.');
+          console.error("Error logging out:", error);
+          Alert.alert("Error", "Failed to log out");
         }
       },
     },
@@ -94,7 +107,7 @@ export default function ProfileScreen() {
   const toggleDrawer = () => {
     const toValue = isDrawerOpen ? 0 : 1;
     setIsDrawerOpen(!isDrawerOpen);
-    
+
     Animated.spring(drawerAnimation, {
       toValue,
       useNativeDriver: true,
@@ -113,11 +126,7 @@ export default function ProfileScreen() {
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    Promise.all([
-      fetchUserData(),
-      fetchUserPosts()
-    ])
-    .finally(() => {
+    Promise.all([fetchUserData(), fetchUserPosts()]).finally(() => {
       setRefreshing(false);
     });
   }, [userData?.data?._id]);
@@ -135,7 +144,6 @@ export default function ProfileScreen() {
       });
 
       setUserData(response.data);
-
     } catch (error) {
       console.error("Error fetching user data:", error);
       Alert.alert("Error", "Failed to load profile data");
@@ -160,8 +168,8 @@ export default function ProfileScreen() {
       // First get user's posts directly using the dedicated endpoint
       const response = await api.get(`/posts/user/${userData?.data?._id}`);
       if (response.data.success) {
-        const myPosts = response.data.data.sort((a, b) => 
-          new Date(b.createdAt) - new Date(a.createdAt)
+        const myPosts = response.data.data.sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
         setUserPosts(myPosts);
       }
@@ -169,10 +177,10 @@ export default function ProfileScreen() {
       console.error("Error fetching user posts:", error);
       // If there's an error, try the fallback method
       try {
-        const allPostsResponse = await api.get('/posts');
+        const allPostsResponse = await api.get("/posts");
         if (allPostsResponse.data.success) {
           const myPosts = allPostsResponse.data.data
-            .filter(post => post.userId._id === userData?.data?._id)
+            .filter((post) => post.userId._id === userData?.data?._id)
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           setUserPosts(myPosts);
         }
@@ -193,9 +201,9 @@ export default function ProfileScreen() {
 
   const handleUpdatePost = () => {
     setShowOptions(false);
-    navigation.navigate('UpdatePostScreen', { 
+    navigation.navigate("UpdatePostScreen", {
       post: selectedPost,
-      onUpdateSuccess: handleUpdateSuccess // Pass the callback
+      onUpdateSuccess: handleUpdateSuccess, // Pass the callback
     });
   };
 
@@ -208,12 +216,14 @@ export default function ProfileScreen() {
       const response = await api.delete(`/posts/${selectedPost._id}`);
       if (response.data.success) {
         // Update posts list
-        setUserPosts(posts => posts.filter(p => p._id !== selectedPost._id));
-        Alert.alert('Success', 'Post deleted successfully');
+        setUserPosts((posts) =>
+          posts.filter((p) => p._id !== selectedPost._id)
+        );
+        Alert.alert("Success", "Post deleted successfully");
       }
     } catch (error) {
-      console.error('Error deleting post:', error);
-      Alert.alert('Error', 'Failed to delete post');
+      console.error("Error deleting post:", error);
+      Alert.alert("Error", "Failed to delete post");
     } finally {
       setLoading(false);
     }
@@ -226,10 +236,7 @@ export default function ProfileScreen() {
   const renderDrawerItem = (item) => (
     <TouchableOpacity
       key={item.id}
-      style={[
-        styles.drawerItem,
-        { opacity: 1 }
-      ]}
+      style={[styles.drawerItem, { opacity: 1 }]}
       onPress={() => {
         toggleDrawer();
         setTimeout(item.onPress, 1000);
@@ -254,23 +261,23 @@ export default function ProfileScreen() {
   const renderPost = (post) => {
     const formatDate = (dateString) => {
       const date = new Date(dateString);
-      
+
       // Format date
       const dateOptions = {
         year: "numeric",
         month: "long",
-        day: "numeric"
+        day: "numeric",
       };
       const dateStr = date.toLocaleDateString("en-US", dateOptions);
-      
+
       // Format time
       const timeOptions = {
         hour: "numeric",
         minute: "numeric",
-        hour12: true  // This ensures 12-hour format with AM/PM
+        hour12: true, // This ensures 12-hour format with AM/PM
       };
       const timeStr = date.toLocaleTimeString("en-US", timeOptions);
-      
+
       return { dateStr, timeStr };
     };
 
@@ -303,9 +310,9 @@ export default function ProfileScreen() {
             <Icon name="ellipsis-vertical" size={20} color="#666" />
           </TouchableOpacity>
         </View>
-        
+
         <Text style={styles.postText}>{post.text}</Text>
-        
+
         {post.imageUrl && (
           <View style={styles.imageContainer}>
             <Image
@@ -321,12 +328,14 @@ export default function ProfileScreen() {
             <Text style={styles.statsText}>
               {post.likes?.length || 0} likes
             </Text>
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('CommentScreen', { 
-                postId: post._id,
-                postOwnerId: userData?.data?._id,
-                onCommentUpdate: handleCommentUpdate
-              })}
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate("CommentScreen", {
+                  postId: post._id,
+                  postOwnerId: userData?.data?._id,
+                  onCommentUpdate: handleCommentUpdate,
+                })
+              }
             >
               <Text style={styles.statsText}>
                 {post.commentsCount || 0} comments
@@ -351,10 +360,7 @@ export default function ProfileScreen() {
       <Header title="My Profile" />
 
       {/* Menu Button */}
-      <TouchableOpacity 
-        style={styles.menuButton} 
-        onPress={toggleDrawer}
-      >
+      <TouchableOpacity style={styles.menuButton} onPress={toggleDrawer}>
         <Icon name="menu-outline" size={30} color="#555" />
       </TouchableOpacity>
 
@@ -363,7 +369,7 @@ export default function ProfileScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#8BC34A']}
+            colors={["#8BC34A"]}
           />
         }
       >
@@ -396,7 +402,8 @@ export default function ProfileScreen() {
           <View style={styles.locationContainer}>
             <Icon name="location-outline" size={16} color="#555" />
             <Text style={styles.locationText}>
-              {userData?.data?.address?.city}, {userData?.data?.address?.country}
+              {userData?.data?.address?.city},{" "}
+              {userData?.data?.address?.country}
             </Text>
           </View>
 
@@ -404,7 +411,7 @@ export default function ProfileScreen() {
             <View style={styles.farmInfo}>
               <Text style={styles.farmTitle}>{userData?.data?.farm.title}</Text>
               <Text style={styles.farmExperience}>
-                {userData?.data?.farm?.experience} years of experience
+                {userData.farm.experience} years of experience
               </Text>
             </View>
           )}
@@ -441,7 +448,7 @@ export default function ProfileScreen() {
               <Icon name="create-outline" size={24} color="#558B2F" />
               <Text style={styles.optionText}>Update Post</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[styles.optionItem, styles.deleteOption]}
               onPress={handleDeletePost}
@@ -463,7 +470,7 @@ export default function ProfileScreen() {
               styles.overlay,
               {
                 opacity: overlayOpacity,
-              }
+              },
             ]}
           >
             <TouchableOpacity
@@ -482,7 +489,7 @@ export default function ProfileScreen() {
           >
             <View style={styles.drawerHeader}>
               <Text style={styles.drawerTitle}>Menu</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={toggleDrawer}
                 style={styles.closeButton}
               >
@@ -606,8 +613,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   menuButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 45,
+    position: "absolute",
+    top: Platform.OS === "ios" ? 60 : 45,
     right: 20,
     zIndex: 50,
     // backgroundColor: '#4CAF50',
@@ -615,30 +622,30 @@ const styles = StyleSheet.create({
     // borderRadius: 8,
   },
   overlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: "rgba(0,0,0,0.5)",
     zIndex: 98,
   },
   overlayTouch: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   drawer: {
     borderTopLeftRadius: 25,
     borderBottomLeftRadius: 25,
-    position: 'absolute',
+    position: "absolute",
     top: 40,
     right: 0,
     width: DRAWER_WIDTH,
     height: height - 40,
-    backgroundColor: '#F1F8E9',
+    backgroundColor: "#F1F8E9",
     zIndex: 99,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: -2,
       height: 0,
@@ -648,40 +655,40 @@ const styles = StyleSheet.create({
     transform: [{ translateX: DRAWER_WIDTH }],
   },
   drawerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#C8E6C9',
-    backgroundColor: '#8BC34A',
+    borderBottomColor: "#C8E6C9",
+    backgroundColor: "#8BC34A",
     borderTopLeftRadius: 25,
   },
   drawerTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    fontWeight: "bold",
+    color: "#fff",
+    fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
   },
   drawerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#C8E6C9',
-    backgroundColor: '#F1F8E9',
+    borderBottomColor: "#C8E6C9",
+    backgroundColor: "#F1F8E9",
   },
   drawerItemText: {
     marginLeft: 15,
     fontSize: 16,
-    color: '#33691E',
-    fontWeight: '500',
+    color: "#33691E",
+    fontWeight: "500",
   },
   closeButton: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 20,
   },
   postsContainer: {
@@ -689,30 +696,30 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 15,
   },
   postCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 15,
     marginBottom: 15,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
   postHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
   },
   postUserInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   postAvatar: {
     width: 40,
@@ -722,21 +729,21 @@ const styles = StyleSheet.create({
   },
   postUsername: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   postTime: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   postText: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
     marginBottom: 10,
     lineHeight: 20,
   },
   postImage: {
-    width: '100%',
+    width: "100%",
     height: 200,
     borderRadius: 8,
   },
@@ -745,78 +752,78 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   optionsModal: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 20,
-    width: '80%',
+    width: "80%",
   },
   optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   optionText: {
     fontSize: 16,
     marginLeft: 15,
-    color: '#333',
+    color: "#333",
   },
   deleteOption: {
     borderBottomWidth: 0,
   },
   deleteText: {
-    color: '#FF5252',
+    color: "#FF5252",
   },
   imageContainer: {
-    width: '100%',
+    width: "100%",
     height: 200,
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 10,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
   },
   postImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   postFooter: {
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: "#eee",
   },
   postStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   statsText: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   noPostsText: {
-    textAlign: 'center',
-    color: '#666',
+    textAlign: "center",
+    color: "#666",
     fontSize: 16,
     marginTop: 20,
   },
   timeContainer: {
-    flexDirection: 'column',
+    flexDirection: "column",
   },
   postDate: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginBottom: 2,
   },
   postTime: {
     fontSize: 11,
-    color: '#888',
-    fontStyle: 'italic',
+    color: "#888",
+    fontStyle: "italic",
   },
 });

@@ -43,7 +43,7 @@ const RentScreen = ({ navigation }) => {
           type: ["rent", "both"],
         },
       });
-      
+
       setProducts(response.data.products || []);
       //console.log('Fetched products:', response.data.products?.length || 0);
     } catch (error) {
@@ -74,7 +74,7 @@ const RentScreen = ({ navigation }) => {
       <View style={styles.productInfo}>
         <Text style={styles.productName}>{item.name}</Text>
         <Text style={styles.productCategory}>{item.category}</Text>
-        <Text style={styles.productPrice}>৳{item.price}</Text>
+        <Text style={styles.productPrice}>৳{item.rentPrice}/day</Text>
         <View style={styles.ratingContainer}>
           <MaterialIcons name="star" size={16} color="#FFD700" />
           <Text style={styles.ratingText}>
@@ -87,14 +87,14 @@ const RentScreen = ({ navigation }) => {
   );
 
   const filteredProducts = products.filter((product) => {
-    const matchesSearch = 
+    const matchesSearch =
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = 
-      selectedCategory === "all" || 
+
+    const matchesCategory =
+      selectedCategory === "all" ||
       product.category.toLowerCase() === selectedCategory.toLowerCase();
-    
+
     return matchesSearch && matchesCategory;
   });
 

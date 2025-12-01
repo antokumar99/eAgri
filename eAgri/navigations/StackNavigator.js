@@ -35,13 +35,20 @@ import CartScreen from "../screens/CartScreen";
 import CheckoutScreen from "../screens/CheckoutScreen";
 import AddProductScreen from "../screens/AddProductScreen";
 import EditProductScreen from "../screens/EditProductScreen";
-import UpdatePostScreen from '../screens/UpdatePostScreen';
+import UpdatePostScreen from "../screens/UpdatePostScreen";
 import CommentScreen from "../screens/CommentScreen";
 import TrendingScreen from "../screens/TrendingScreen";
 import PeopleProfileScreen from "../screens/PeopleProfileScreen";
 import ChatScreen from "../screens/ChatScreen";
 import MessagesScreen from "../screens/MessagesScreen";
-
+import OTPverify from "../screens/OTPverify";
+import PaymentSuccessScreen from "../screens/PaymentSuccessScreen";
+import MyOrders from "../screens/MyOrders";
+import ReceivedOrders from "../screens/ReceivedOrders";
+import MyRentals from "../screens/MyRentals";
+import ReceivedRentals from "../screens/ReceivedRentals";
+import RentalDetailsScreen from "../screens/RentalDetailsScreen";
+import ReviewsScreen from "../screens/ReviewsScreen";
 
 const StackNavigator = () => {
   const Stack = createStackNavigator();
@@ -53,20 +60,35 @@ const StackNavigator = () => {
     const checkAppState = async () => {
       try {
         const isFirstLaunch = await AsyncStorage.getItem("isFirstLaunch");
-        const isLoggedIn = await AsyncStorage.getItem("token");
+        const userToken = await AsyncStorage.getItem("token");
+
+        console.log("Navigation Debug - isFirstLaunch:", isFirstLaunch);
+        console.log(
+          "Navigation Debug - userToken:",
+          userToken ? "EXISTS" : "NOT FOUND"
+        );
 
         if (isFirstLaunch === null) {
+          // First time launching the app
           await AsyncStorage.setItem("isFirstLaunch", "false");
-          setInitialRoute("Onboarding");
-        } else if (isLoggedIn) {
-          setInitialRoute("Main"); // Navigate to BottomTabs
+          console.log("Navigation Debug - First time user, going to Welcome");
+          setInitialRoute("Welcome"); // Start with Welcome screen
+        } else if (userToken) {
+          // User is logged in, go directly to Home (skip Welcome and Onboarding)
+          console.log("Navigation Debug - User is logged in, going to Main");
+          setInitialRoute("Main");
         } else {
-          setInitialRoute("Login");
+          // User has used the app before but not logged in
+          console.log(
+            "Navigation Debug - Returning user not logged in, going to Welcome"
+          );
+          setInitialRoute("Welcome"); // Start with Welcome screen
         }
       } catch (error) {
         console.error("Error checking app state:", error);
+        setInitialRoute("Welcome");
       } finally {
-        setLoading(false); // Done loading
+        setLoading(false);
       }
     };
 
@@ -75,50 +97,40 @@ const StackNavigator = () => {
 
   function BottomTabs() {
     return (
-      <Tab.Navigator>
+      <Tab.Navigator
+        screenOptions={{
+          tabBarStyle: {
+            backgroundColor: "#fff",
+            borderTopWidth: 1,
+            borderTopColor: "#e0e0e0",
+            paddingBottom: 5,
+            paddingTop: 5,
+            height: 60,
+          },
+          tabBarActiveTintColor: "#4CAF50",
+          tabBarInactiveTintColor: "#666",
+        }}
+      >
         <Tab.Screen
           name="Home"
           component={HomeScreen}
           options={{
             tabBarLabel: "Home",
-            tabBarLabelStyle: { color: "#008E97" },
             headerShown: false,
-            tabBarIcon: ({ focused }) =>
-              focused ? (
-                <Entypo name="home" size={24} color="#008E97" />
-              ) : (
-                <AntDesign name="home" size={24} color="black" />
-              ),
+            tabBarIcon: ({ focused, color }) => (
+              <Entypo name="home" size={24} color={color} />
+            ),
           }}
         />
-        {/* <Tab.Screen
-          name="Service"
-          component={RentScreen}
-          options={{
-            tabBarLabel: "Service",
-            tabBarLabelStyle: { color: "#008E97" },
-            headerShown: false,
-            tabBarIcon: ({ focused }) =>
-              focused ? (
-                <Fontisto name="player-settings" size={24} color="#008E97" />
-              ) : (
-                <AntDesign name="setting" size={24} color="black" />
-              ),
-          }}
-        /> */}
         <Tab.Screen
           name="Community"
           component={CommunityScreen}
           options={{
             tabBarLabel: "Community",
-            tabBarLabelStyle: { color: "#008E97" },
             headerShown: false,
-            tabBarIcon: ({ focused }) =>
-              focused ? (
-                <Ionicons name="newspaper" size={24} color="#008E97" />
-              ) : (
-                <Ionicons name="newspaper-outline" size={24} color="black" />
-              ),
+            tabBarIcon: ({ focused, color }) => (
+              <Ionicons name="newspaper" size={24} color={color} />
+            ),
           }}
         />
         <Tab.Screen
@@ -126,14 +138,10 @@ const StackNavigator = () => {
           component={WeatherScreen}
           options={{
             tabBarLabel: "Weather",
-            tabBarLabelStyle: { color: "#008E97" },
             headerShown: false,
-            tabBarIcon: ({ focused }) =>
-              focused ? (
-                <AntDesign name="cloud" size={24} color="#008E97" />
-              ) : (
-                <AntDesign name="cloudo" size={24} color="black" />
-              ),
+            tabBarIcon: ({ focused, color }) => (
+              <AntDesign name="cloud" size={24} color={color} />
+            ),
           }}
         />
         <Tab.Screen
@@ -141,14 +149,10 @@ const StackNavigator = () => {
           component={MessagesScreen}
           options={{
             tabBarLabel: "Messages",
-            tabBarLabelStyle: { color: "#008E97" },
             headerShown: false,
-            tabBarIcon: ({ focused }) =>
-              focused ? (
-                <Ionicons name="chatbubbles" size={24} color="#008E97" />
-              ) : (
-                <Ionicons name="chatbubbles-outline" size={24} color="black" />
-              ),
+            tabBarIcon: ({ focused, color }) => (
+              <Ionicons name="chatbubbles" size={24} color={color} />
+            ),
           }}
         />
         <Tab.Screen
@@ -156,14 +160,10 @@ const StackNavigator = () => {
           component={ProfileScreen}
           options={{
             tabBarLabel: "Profile",
-            tabBarLabelStyle: { color: "#008E97" },
             headerShown: false,
-            tabBarIcon: ({ focused }) =>
-              focused ? (
-                <FontAwesome5 name="user-alt" size={24} color="#008E97" />
-              ) : (
-                <FontAwesome5 name="user" size={24} color="black" />
-              ),
+            tabBarIcon: ({ focused, color }) => (
+              <FontAwesome5 name="user-alt" size={24} color={color} />
+            ),
           }}
         />
       </Tab.Navigator>
@@ -173,7 +173,8 @@ const StackNavigator = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#008E97" />
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -194,14 +195,12 @@ const StackNavigator = () => {
         <Stack.Screen name="AddPostScreen" component={AddPostScreen} />
         <Stack.Screen name="BuyScreen" component={BuyScreen} />
         <Stack.Screen name="RentScreen" component={RentScreen} />
-        <Stack.Screen
-          name="ProductDetailsScreen"
-          component={ProductDetailsScreen}
-        />
+        <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
         <Stack.Screen name="ResearchScreen" component={ResearchScreen} />
         <Stack.Screen name="CommunityScreen" component={CommunityScreen} />
         <Stack.Screen name="PaymentWebView" component={PaymentWebView} />
-        {/* <Stack.Screen name="PaymentSuccess" component={PaymentSuccess} /> */}
+        <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
+        <Stack.Screen name="VerifyOTP" component={OTPverify} />
         <Stack.Screen name="AdminLogin" component={AdminLogin} />
         <Stack.Screen name="AdminRegister" component={AdminRegister} />
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
@@ -217,12 +216,24 @@ const StackNavigator = () => {
         <Stack.Screen name="Checkout" component={CheckoutScreen} />
         <Stack.Screen name="AddProduct" component={AddProductScreen} />
         <Stack.Screen name="EditProduct" component={EditProductScreen} />
-        <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
         <Stack.Screen name="CommentScreen" component={CommentScreen} />
         <Stack.Screen name="TrendingScreen" component={TrendingScreen} />
-        <Stack.Screen name="PeopleProfileScreen" component={PeopleProfileScreen} />
+        <Stack.Screen
+          name="PeopleProfileScreen"
+          component={PeopleProfileScreen}
+        />
         <Stack.Screen name="MessagesScreen" component={MessagesScreen} />
         <Stack.Screen name="ChatScreen" component={ChatScreen} />
+        <Stack.Screen name="MyOrders" component={MyOrders} />
+        <Stack.Screen name="ReceivedOrders" component={ReceivedOrders} />
+        <Stack.Screen name="MyRentals" component={MyRentals} />
+        <Stack.Screen name="ReceivedRentals" component={ReceivedRentals} />
+        <Stack.Screen name="RentalDetails" component={RentalDetailsScreen} />
+        <Stack.Screen name="Reviews" component={ReviewsScreen} />
+        <Stack.Screen name="Settings" component={ProfileScreen} />
+        <Stack.Screen name="OrderDetails" component={MyOrders} />
+        <Stack.Screen name="OrderTracking" component={MyOrders} />
+        <Stack.Screen name="Weather" component={WeatherScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -236,5 +247,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#4CAF50",
   },
 });

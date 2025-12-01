@@ -28,12 +28,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: "#bdf795",
+    backgroundColor: "#4CAF50",
     elevation: 2,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
   },
   title: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#281",
+    color: "#fff",
   },
 });

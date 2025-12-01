@@ -14,8 +14,6 @@
 // } from "react-native";
 // import api from '../services/api';
 
-
-
 // export default function RegisterScreen({ navigation }) {
 //   const [name, setName] = useState("");
 //   const [email, setEmail] = useState("");
@@ -226,8 +224,6 @@
 //   },
 // });
 
-
-
 import React, { useState } from "react";
 import {
   View,
@@ -255,7 +251,15 @@ export default function RegisterScreen({ navigation }) {
   const [showRePassword, setShowRePassword] = useState(false);
 
   const handleSignUp = async () => {
-    if (!name || !email || !phoneNumber || !city || !country || !password || !rePassword) {
+    if (
+      !name ||
+      !email ||
+      !phoneNumber ||
+      !city ||
+      !country ||
+      !password ||
+      !rePassword
+    ) {
       Alert.alert("Error", "All fields are required.");
       return;
     }
@@ -278,21 +282,22 @@ export default function RegisterScreen({ navigation }) {
         },
       };
 
-      console.log('Sending registration request:', user); // Add this for debugging
+      console.log("Sending registration request:", user); // Add this for debugging
 
       const response = await api.post("/register", user);
 
-      console.log('Registration response:', response.data); // Add this for debugging
+      console.log("Registration response:", response.data); // Add this for debugging
 
       if (response.data.success) {
         Alert.alert(
           "Success",
-          response.data.message || "Registration successful. Please check your email to verify.",
+          response.data.message ||
+            "Registration successful. Please check your email to verify.",
           [
             {
               text: "OK",
-              onPress: () => navigation.navigate("Login")
-            }
+              onPress: () => navigation.navigate("Login"),
+            },
           ]
         );
 
@@ -308,12 +313,13 @@ export default function RegisterScreen({ navigation }) {
         Alert.alert("Error", response.data.message || "Registration failed");
       }
     } catch (error) {
-      console.log('Registration error:', error.response || error); // Add this for debugging
+      console.log("Registration error:", error.response || error); // Add this for debugging
 
-      const errorMessage = error.response?.data?.message
-        || error.response?.data?.error
-        || error.message
-        || "Registration failed. Please try again.";
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Registration failed. Please try again.";
 
       Alert.alert("Error", errorMessage);
     }
@@ -427,7 +433,9 @@ export default function RegisterScreen({ navigation }) {
         <View style={styles.bottomTextContainer}>
           <Text style={styles.bottomText}>Already have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-            <Text style={[styles.bottomText, { color: "#00a064" }]}>Log in</Text>
+            <Text style={[styles.bottomText, { color: "#00a064" }]}>
+              Log in
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

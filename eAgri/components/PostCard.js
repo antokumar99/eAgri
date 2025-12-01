@@ -47,10 +47,7 @@ const PostCard = ({ post }) => {
               color={liked ? "blue" : "gray"}
             />
             <Text
-              style={[
-                styles.actionText,
-                { color: liked ? "blue" : "gray" },
-              ]}
+              style={[styles.actionText, { color: liked ? "blue" : "gray" }]}
             >
               Like
             </Text>

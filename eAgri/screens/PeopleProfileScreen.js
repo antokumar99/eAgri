@@ -337,8 +337,8 @@ const styles = StyleSheet.create({
     borderColor: '#E8F5E9',
   },
   userAvatar: {
-    width: 100,
-    height: 100,
+    width: 50,
+    height: 50,
     borderRadius: 50,
     backgroundColor: "#48c574",
     justifyContent: "center",
@@ -351,13 +351,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   avatar: {
-    width: 100,
-    height: 100,
+    width: 50,
+    height: 50,
     borderRadius: 50,
   },
   avatarText: {
     color: "#FFFFFF",
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: "bold",
   },
   statsContainer: {

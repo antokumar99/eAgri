@@ -44,39 +44,42 @@ const LoginScreen = () => {
   // };
   const handleLogin = async () => {
     try {
-      const response = await api.post('/login', {
+      const response = await api.post("/login", {
         email,
         password,
       });
 
       if (response.data.success) {
         const { token, user } = response.data;
-        
+
         // Log the token before storing
-        console.log('Received token:', token);
-        console.log('Received user:', user);
-        
+        console.log("Received token:", token);
+        console.log("Received user:", user);
+
         // Store both token and user data
-        await AsyncStorage.setItem('token', token);
-        await AsyncStorage.setItem('user', JSON.stringify({
-          _id: user._id,
-          username: user.name || user.email.split('@')[0], // Use name or fallback to email prefix
-          email: user.email,
-          avatar: user.avatar || null
-        }));
-        
+        await AsyncStorage.setItem("token", token);
+        await AsyncStorage.setItem(
+          "user",
+          JSON.stringify({
+            _id: user._id,
+            username: user.name || user.email.split("@")[0], // Use name or fallback to email prefix
+            email: user.email,
+            avatar: user.avatar || null,
+          })
+        );
+
         // Verify the data was stored
-        const storedToken = await AsyncStorage.getItem('token');
-        const storedUser = await AsyncStorage.getItem('user');
-        console.log('Stored token:', storedToken);
-        console.log('Stored user data:', storedUser);
-        
+        const storedToken = await AsyncStorage.getItem("token");
+        const storedUser = await AsyncStorage.getItem("user");
+        console.log("Stored token:", storedToken);
+        console.log("Stored user data:", storedUser);
+
         // Navigate to home screen
-        navigation.replace('Main');
+        navigation.replace("Main");
       }
     } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Login failed');
+      console.error("Login error:", error);
+      Alert.alert("Error", error.response?.data?.message || "Login failed");
     }
   };
 
@@ -279,11 +282,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-
-
-
-
-
 // import React, { useState } from "react";
 // import {
 //   View,
