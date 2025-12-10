@@ -18,11 +18,19 @@ const storage = multer.diskStorage({
   }
 });
 
+const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
 const fileFilter = (req, file, cb) => {
-  // Accept images only
-  if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-    return cb(new Error('Only image files are allowed!'), false);
+  // Check the declared MIME type as well as the extension, and match the
+  // extension case-insensitively — "photo.JPG" straight out of a phone camera
+  // was previously rejected outright.
+  const extOk = /\.(jpe?g|png|gif|webp)$/i.test(file.originalname);
+  const mimeOk = ALLOWED_MIME.includes(file.mimetype);
+
+  if (!extOk || !mimeOk) {
+    return cb(new Error('Only JPG, PNG, GIF or WebP images are allowed'), false);
   }
+
   cb(null, true);
 };
 

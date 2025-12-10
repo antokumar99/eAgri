@@ -87,49 +87,44 @@ const MessagesScreen = () => {
   // Memoized keyExtractor for better FlatList performance
   const keyExtractor = useCallback((item) => item.id, []);
 
-  // Static item layout for better FlatList performance (if all items have same height)
-  const getItemLayout = useCallback((data, index) => ({
-    length: 82, // Height of each chat item (16 + 50 + 16 = 82px)
-    offset: 82 * index,
-    index,
-  }), []);
-
   useEffect(() => {
     fetchUserData();
   }, []);
 
   useFocusEffect(
     React.useCallback(() => {
+      let cancelled = false;
+      let unsubscribe = null;
+
       loadChats();
-      
+
       // Set up real-time listener for chat updates
       const setupChatListener = async () => {
         try {
           const currentUser = await chatService.initializeUser();
-          if (currentUser) {
-            // Listen for changes to chat rooms (new messages, etc.)
-            const unsubscribe = chatService.subscribeToUserChatRooms(currentUser._id, () => {
-              // Reload chats when changes occur
-              loadChats();
-            });
-            
-            return unsubscribe;
-          }
+          // The screen can lose focus before this resolves; without the guard
+          // the listener was created after cleanup ran and leaked.
+          if (!currentUser || cancelled) return;
+
+          unsubscribe = chatService.subscribeToUserChatRooms(
+            currentUser._id,
+            () => {
+              if (!cancelled) loadChats();
+            }
+          );
+
+          if (cancelled) unsubscribe();
         } catch (error) {
           // Could not set up chat listener (non-critical)
         }
       };
 
-      let unsubscribe;
-      setupChatListener().then(unsub => {
-        unsubscribe = unsub;
-      });
+      setupChatListener();
 
       // Cleanup when screen loses focus
       return () => {
-        if (unsubscribe) {
-          unsubscribe();
-        }
+        cancelled = true;
+        if (unsubscribe) unsubscribe();
       };
     }, [])
   );
@@ -160,7 +155,10 @@ const MessagesScreen = () => {
       }
 
       // Get user's chat rooms
-      const chatRooms = await chatService.getUserChatRooms();
+      const [chatRooms, unreadCounts] = await Promise.all([
+        chatService.getUserChatRooms(),
+        chatService.getUnreadCounts(),
+      ]);
 
       // Clean up any demo/test chats (run in background)
       chatService.cleanupDemoChats().catch(() => {
@@ -256,8 +254,8 @@ const MessagesScreen = () => {
               userAvatar: participantInfo.avatar,
               lastMessage: displayMessage,
               lastMessageTime: lastMessageTime,
-              unreadCount: 0, // TODO: Implement unread count logic
-              isOnline: false, // TODO: Get real online status from chatService
+              unreadCount: unreadCounts[chatRoom.id] || 0,
+              isOnline: false,
               messageType: messageType,
               lastSeen: null,
             };
@@ -477,7 +475,6 @@ const MessagesScreen = () => {
         data={searchMode && searchQuery.trim() ? filteredChats : chats}
         renderItem={renderChatItem}
         keyExtractor={keyExtractor}
-        getItemLayout={getItemLayout}
         style={styles.chatsList}
         contentContainerStyle={(searchMode && searchQuery.trim() ? filteredChats : chats).length === 0 ? styles.emptyContentContainer : null}
         showsVerticalScrollIndicator={false}

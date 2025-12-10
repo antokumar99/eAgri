@@ -17,6 +17,7 @@ const ReceivedOrders = ({ navigation }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -86,8 +87,10 @@ const ReceivedOrders = ({ navigation }) => {
     });
   };
 
+  // Expand in place. There is no separate order-details screen; this used to
+  // navigate to "OrderDetails", which was registered as this same screen.
   const handleOrderPress = (order) => {
-    navigation.navigate("OrderDetails", { orderId: order._id });
+    setExpandedOrderId((current) => (current === order._id ? null : order._id));
   };
 
   const handleUpdateStatus = async (orderId, newStatus) => {
@@ -130,7 +133,7 @@ const ReceivedOrders = ({ navigation }) => {
         <View style={styles.orderInfo}>
           <Text style={styles.orderId}>Order #{order._id.slice(-8)}</Text>
           <Text style={styles.orderDate}>{formatDate(order.createdAt)}</Text>
-          <Text style={styles.customerName}>Customer: {order.user.name}</Text>
+          <Text style={styles.customerName}>Customer: {order.user?.name || "Unknown"}</Text>
         </View>
         <View style={styles.orderStatus}>
           <View
@@ -145,47 +148,51 @@ const ReceivedOrders = ({ navigation }) => {
       </View>
 
       <View style={styles.orderItems}>
-        {order.products
-          .filter((item) => item.product.seller._id === order.user._id)
-          .slice(0, 2)
-          .map((item, index) => (
-            <View key={index} style={styles.orderItem}>
-              <Image
-                source={{ uri: item.product.image }}
-                style={styles.productImage}
-                defaultSource={require("../assets/rice.jpg")}
-              />
-              <View style={styles.itemDetails}>
-                <Text style={styles.productName} numberOfLines={2}>
-                  {item.product.name}
-                </Text>
-                <Text style={styles.itemQuantity}>
-                  Qty: {item.quantity} × ৳{item.price}
-                </Text>
-              </View>
+        {/* This used to filter on `item.product.seller._id === order.user._id`,
+            comparing the product's seller against the *buyer*. That is never
+            true, so every order card rendered with no items at all. The API now
+            returns only this seller's line items, so no filtering is needed. */}
+        {(expandedOrderId === order._id
+          ? order.products
+          : order.products.slice(0, 2)
+        ).map((item, index) => (
+          <View key={index} style={styles.orderItem}>
+            <Image
+              source={{ uri: item.product?.image }}
+              style={styles.productImage}
+              defaultSource={require("../assets/rice.jpg")}
+            />
+            <View style={styles.itemDetails}>
+              <Text style={styles.productName} numberOfLines={2}>
+                {item.product?.name || "Product no longer available"}
+              </Text>
+              <Text style={styles.itemQuantity}>
+                Qty: {item.quantity} × ৳{item.price}
+              </Text>
             </View>
-          ))}
-        {order.products.filter(
-          (item) => item.product.seller._id === order.user._id
-        ).length > 2 && (
+          </View>
+        ))}
+        {order.products.length > 2 && (
           <Text style={styles.moreItems}>
-            +
-            {order.products.filter(
-              (item) => item.product.seller._id === order.user._id
-            ).length - 2}{" "}
-            more items
+            {expandedOrderId === order._id
+              ? "Show less"
+              : `+${order.products.length - 2} more items`}
           </Text>
         )}
       </View>
 
       <View style={styles.orderFooter}>
         <View style={styles.paymentInfo}>
+          {/* The seller's share of the order, computed server-side. */}
           <Text style={styles.totalAmount}>
             ৳
-            {order.products
-              .filter((item) => item.product.seller._id === order.user._id)
-              .reduce((sum, item) => sum + item.quantity * item.price, 0)
-              .toFixed(2)}
+            {(
+              order.sellerSubtotal ??
+              order.products.reduce(
+                (sum, item) => sum + item.quantity * item.price,
+                0
+              )
+            ).toFixed(2)}
           </Text>
           <View
             style={[

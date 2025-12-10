@@ -20,28 +20,9 @@ const LoginScreen = () => {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
-  // const handleLogin = async () => {
-  //   try {
-  //     const user = {
-  //       email: email,
-  //       password: password,
-  //     };
 
   //     const response = await api.post("/login", user);
 
-  //     if (response.status === 200) {
-  //       Alert.alert("Success", "User logged in.");
-  //       setEmail("");
-  //       setPassword("");
-  //       navigation.replace("Main");
-  //     } else {
-  //       Alert.alert("Error", response.data.msg || "Invalid credentials.");
-  //     }
-  //   } catch (error) {
-  //     console.error(error);
-  //     Alert.alert("Error", "An error occurred while logging in.");
-  //   }
-  // };
   const handleLogin = async () => {
     try {
       const response = await api.post("/login", {
@@ -53,7 +34,6 @@ const LoginScreen = () => {
         const { token, user } = response.data;
 
         // Log the token before storing
-        console.log("Received token:", token);
         console.log("Received user:", user);
 
         // Store both token and user data
@@ -71,7 +51,6 @@ const LoginScreen = () => {
         // Verify the data was stored
         const storedToken = await AsyncStorage.getItem("token");
         const storedUser = await AsyncStorage.getItem("user");
-        console.log("Stored token:", storedToken);
         console.log("Stored user data:", storedUser);
 
         // Navigate to home screen
@@ -282,20 +261,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-// import React, { useState } from "react";
-// import {
-//   View,
-//   Text,
-//   Image,
-//   TextInput,
-//   TouchableOpacity,
-//   StyleSheet,
-//   Alert,
-// } from "react-native";
-// import BouncyCheckbox from "react-native-bouncy-checkbox";
-// import { useNavigation } from "@react-navigation/native";
-// import logInImage from "../assets/login.jpg"; // <-- Adjust this import to your actual file
-// import api from "../services/api";
 
 // const LoginScreen = () => {
 //   const [email, setEmail] = useState('');
@@ -308,49 +273,12 @@ const styles = StyleSheet.create({
 //       return;
 //     }
 
-//     try {
-//       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-//       const user = userCredential.user;
-//       console.log('Logged in user:', user.email);
-//       navigation.replace('Home');
-//     } catch (error) {
-//       console.error(error);
-//       Alert.alert('Error', error.message);
-//     }
-//   };
 
 //   const handleGoogleLogin = () => {
 //     // Implement Google login
 //     console.log('Google login pressed');
 //   };
 
-//   return (
-//     <SafeAreaView style={styles.container}>
-//       <KeyboardAvoidingView
-//         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-//         style={styles.container}
-//       >
-//         <ScrollView contentContainerStyle={styles.scrollContainer}>
-//           <View style={styles.formContainer}>
-//             <Text style={styles.title}>Welcome Back!</Text>
-//             <Text style={styles.subtitle}>Sign in to continue</Text>
-
-//             <TextInput
-//               style={styles.input}
-//               placeholder="Email"
-//               value={email}
-//               onChangeText={setEmail}
-//               keyboardType="email-address"
-//               autoCapitalize="none"
-//             />
-
-//             <TextInput
-//               style={styles.input}
-//               placeholder="Password"
-//               value={password}
-//               onChangeText={setPassword}
-//               secureTextEntry
-//             />
 
 //             <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
 //               <Text style={styles.loginButtonText}>Login</Text>
@@ -368,18 +296,6 @@ const styles = StyleSheet.create({
 //               </TouchableOpacity>
 //             </View>
 
-//             <View style={styles.signUpContainer}>
-//               <Text>Don't have an account? </Text>
-//               <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-//                 <Text style={styles.signUpText}>Sign Up</Text>
-//               </TouchableOpacity>
-//             </View>
-//           </View>
-//         </ScrollView>
-//       </KeyboardAvoidingView>
-//     </SafeAreaView>
-//   );
-// };
 
 // export default LoginScreen;
 

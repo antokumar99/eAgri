@@ -152,21 +152,58 @@ const ProductDetailsScreen = ({ route, navigation }) => {
         startDate: startDate.toISOString(),
         paymentMethod: "online",
       });
+
+      const rentalId = response.data.rental._id;
       setShowRentalModal(false);
-      Alert.alert("Success", "Rental created successfully", [
-        {
-          text: "View Details",
-          onPress: () =>
-            navigation.navigate("RentalDetails", {
-              rentalId: response.data.rental._id,
-            }),
-        },
-      ]);
+
+      // A rental is only reserved until it's paid for, so send the renter
+      // straight to the gateway instead of leaving it pending indefinitely.
+      Alert.alert(
+        "Rental Reserved",
+        `Your booking is held for ৳${calculateRentalPrice()}. Pay now to confirm it.`,
+        [
+          {
+            text: "Pay Later",
+            style: "cancel",
+            onPress: () => navigation.navigate("RentalDetails", { rentalId }),
+          },
+          {
+            text: "Pay Now",
+            onPress: () => startRentalPayment(rentalId),
+          },
+        ]
+      );
     } catch (error) {
       Alert.alert(
         "Error",
         error.response?.data?.message || "Failed to create rental"
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startRentalPayment = async (rentalId) => {
+    try {
+      setLoading(true);
+      const { data } = await api.post(`/rentals/${rentalId}/pay`);
+
+      if (data.success) {
+        navigation.navigate("PaymentWebView", {
+          paymentUrl: data.paymentUrl,
+          orderId: data.rentalId,
+          orderDetails: { total: data.amount, rentalId },
+        });
+      } else {
+        Alert.alert("Error", data.message || "Could not start payment");
+      }
+    } catch (error) {
+      Alert.alert(
+        "Payment Failed",
+        error.response?.data?.message ||
+          "Could not start payment. You can pay later from My Rentals."
+      );
+      navigation.navigate("RentalDetails", { rentalId });
     } finally {
       setLoading(false);
     }

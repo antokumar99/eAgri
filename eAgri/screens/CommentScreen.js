@@ -26,6 +26,7 @@ const CommentScreen = ({ route, navigation }) => {
   const [replyTo, setReplyTo] = useState(null);
   const [userData, setUserData] = useState(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [posting, setPosting] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -81,6 +82,10 @@ const CommentScreen = ({ route, navigation }) => {
       if (response.data.success) {
         const organizedComments = organizeComments(response.data.data);
         setComments(organizedComments);
+
+        // Hand the exact count back to the feed so it can patch one row rather
+        // than re-fetching every post.
+        route.params?.onCommentUpdate?.(postId, response.data.data.length);
       }
     } catch (error) {
       console.error("Error fetching comments:", error);
@@ -91,26 +96,30 @@ const CommentScreen = ({ route, navigation }) => {
   };
 
   const handleComment = async () => {
-    if (!comment.trim()) return;
+    const text = comment.trim();
+    if (!text || posting) return;
 
     try {
+      setPosting(true);
       const response = await api.post(`/posts/${postId}/comments`, {
-        text: comment,
+        text,
         parentId: replyTo?._id,
       });
 
       if (response.data.success) {
         setComment("");
         setReplyTo(null);
-        fetchComments();
-        // Refresh the posts list to update comment count
-        if (route.params?.onCommentUpdate) {
-          route.params.onCommentUpdate();
-        }
+        Keyboard.dismiss();
+        await fetchComments();
       }
     } catch (error) {
       console.error("Error posting comment:", error);
-      Alert.alert("Error", "Failed to post comment");
+      Alert.alert(
+        "Error",
+        error.response?.data?.error || "Failed to post comment"
+      );
+    } finally {
+      setPosting(false);
     }
   };
 
@@ -129,11 +138,7 @@ const CommentScreen = ({ route, navigation }) => {
                 `/posts/${postId}/comments/${commentId}`
               );
               if (response.data.success) {
-                fetchComments();
-                // Update the parent post's comment count
-                if (route.params?.onCommentUpdate) {
-                  route.params.onCommentUpdate();
-                }
+                await fetchComments();
               }
             } catch (error) {
               console.error("Error deleting comment:", error);
@@ -283,10 +288,23 @@ const CommentScreen = ({ route, navigation }) => {
             value={comment}
             onChangeText={setComment}
             multiline
+            maxLength={1000}
+            editable={!posting}
             textAlignVertical="top"
           />
-          <TouchableOpacity style={styles.sendButton} onPress={handleComment}>
-            <FontAwesome name="send" size={20} color="#fff" />
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              (!comment.trim() || posting) && styles.sendButtonDisabled,
+            ]}
+            onPress={handleComment}
+            disabled={!comment.trim() || posting}
+          >
+            {posting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <FontAwesome name="send" size={20} color="#fff" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -404,6 +422,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#28a745",
     justifyContent: "center",
     alignItems: "center",
+  },
+  sendButtonDisabled: {
+    backgroundColor: "#a5d6b0",
   },
 });
 

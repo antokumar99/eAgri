@@ -10,7 +10,7 @@ import {
   Platform,
   SafeAreaView
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { Ionicons as Icon } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
 import { Linking } from 'react-native';
@@ -59,29 +59,6 @@ const ProductDetailsScreen = ({ route }) => {
   //       // Store transaction ID in AsyncStorage for later verification
   //       await AsyncStorage.setItem('current_transaction', transactionId);
         
-  //       if (Platform.OS === 'web') {
-  //         // For web platform, redirect to payment URL
-  //         window.location.href = response.data.GatewayPageURL;
-  //       } else {
-  //         // For mobile platforms, navigate to WebView
-  //         navigation.navigate('PaymentWebView', {
-  //           paymentUrl: response.data.GatewayPageURL,
-  //           transactionId: transactionId,
-  //         });
-  //       }
-  //     } else {
-  //       Alert.alert('Error', 'Payment initialization failed. Please try again.');
-  //     }
-  //   } catch (error) {
-  //     console.error('Payment initialization error:', error);
-  //     Alert.alert(
-  //       'Error',
-  //       'Unable to process payment at this time. Please try again later.'
-  //     );
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
   const handleBuyNow = async () => {
     setLoading(true);
     try {

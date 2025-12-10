@@ -1,15 +1,12 @@
-// Environment configuration template
-// Copy this file to env.js and add your actual API keys
-// DO NOT commit env.js to git
+// Copy this file to eAgri/config/env.js and fill in real values.
+// eAgri/config/env.js is gitignored — never commit it.
+//
+// The backend address is NOT here: it lives in config/apiConfig.js, which is
+// committed because it holds no secrets.
 
 const ENV_CONFIG = {
-  // Get your API key from https://openweathermap.org/api_keys
-  OPENWEATHER_API_KEY: 'YOUR_OPENWEATHER_API_KEY_HERE',
-  
-  // You can add other sensitive configs here
-  // FIREBASE_API_KEY: 'your_firebase_key',
-  // GOOGLE_MAPS_API_KEY: 'your_google_maps_key',
-  // etc.
+  // https://openweathermap.org/api — free tier is enough for WeatherScreen.
+  OPENWEATHER_API_KEY: 'your_openweathermap_api_key',
 };
 
 export default ENV_CONFIG;

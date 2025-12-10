@@ -39,6 +39,18 @@ const orderSchema = new mongoose.Schema({
     enum: ["Cash on Delivery", "Online Payment"],
     required: true,
   },
+  subtotal: {
+    type: Number,
+    default: 0,
+  },
+  deliveryFee: {
+    type: Number,
+    default: 0,
+  },
+  codFee: {
+    type: Number,
+    default: 0,
+  },
   totalPrice: {
     type: Number,
     required: true,
@@ -61,6 +73,14 @@ const orderSchema = new mongoose.Schema({
   },
   paidAt: {
     type: Date,
+  },
+  // Stock is decremented when an order is placed. This flag makes the
+  // restore-on-cancel path idempotent: SSLCommerz can deliver both a browser
+  // callback and an IPN for the same failure, and without it the second one
+  // would credit the seller's stock a second time.
+  stockReleased: {
+    type: Boolean,
+    default: false,
   },
   createdAt: {
     type: Date,

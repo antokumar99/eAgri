@@ -57,6 +57,14 @@ const rentalSchema = new mongoose.Schema(
     },
     transactionId: {
       type: String,
+      unique: true,
+      sparse: true,
+    },
+    sslcommerzValId: {
+      type: String,
+    },
+    paidAt: {
+      type: Date,
     },
     shippingAddress: {
       street: String,
@@ -78,6 +86,10 @@ const rentalSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    // Without these the isOverdue / remainingDays virtuals below were computed
+    // but never reached the API response.
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 
@@ -87,35 +99,40 @@ rentalSchema.index({ seller: 1, status: 1 });
 rentalSchema.index({ startDate: 1, endDate: 1 });
 
 // Virtual for calculating if rental is overdue
+const ACTIVE_STATUSES = ["active", "overdue"];
+
 rentalSchema.virtual("isOverdue").get(function () {
-  if (this.status === "active" && new Date() > this.endDate) {
-    return true;
-  }
-  return false;
+  return ACTIVE_STATUSES.includes(this.status) && new Date() > this.endDate;
 });
 
 // Virtual for calculating remaining days
 rentalSchema.virtual("remainingDays").get(function () {
-  if (this.status === "active") {
-    const now = new Date();
-    const end = new Date(this.endDate);
-    const diffTime = end - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
-  }
-  return 0;
+  if (!ACTIVE_STATUSES.includes(this.status)) return 0;
+  const diffDays = Math.ceil(
+    (new Date(this.endDate) - new Date()) / (1000 * 60 * 60 * 24)
+  );
+  return Math.max(0, diffDays);
 });
 
 // Method to calculate late fees
 rentalSchema.methods.calculateLateFees = function () {
-  if (this.status === "active" && new Date() > this.endDate) {
-    const daysLate = Math.ceil(
-      (new Date() - this.endDate) / (1000 * 60 * 60 * 24)
-    );
-    const dailyRate = this.totalPrice / this.duration.value;
-    return daysLate * dailyRate * 0.1; // 10% daily late fee
-  }
-  return 0;
+  const reference = this.returnedAt || new Date();
+  if (reference <= this.endDate) return 0;
+
+  const daysLate = Math.ceil(
+    (reference - this.endDate) / (1000 * 60 * 60 * 24)
+  );
+
+  // Charge against the daily rate, not totalPrice/duration.value — for a
+  // rental booked in weeks or months the latter is the price of a whole
+  // week or month, which inflated the fee by 7x or 30x.
+  const totalDays = Math.max(
+    1,
+    Math.round((this.endDate - this.startDate) / (1000 * 60 * 60 * 24))
+  );
+  const dailyRate = this.totalPrice / totalDays;
+
+  return Math.round(daysLate * dailyRate * 0.1 * 100) / 100; // 10% daily late fee
 };
 
 module.exports = mongoose.model("Rental", rentalSchema);

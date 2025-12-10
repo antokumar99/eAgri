@@ -85,11 +85,13 @@ const productSchema = new mongoose.Schema(
 );
 
 productSchema.pre("save", function (next) {
+  // This used to assign the *sum* of the ratings, so three 5-star reviews
+  // produced an "average" of 15 and the star display saturated immediately.
   if (this.ratings.length > 0) {
-    this.averageRating = this.ratings.reduce(
-      (acc, item) => item.rating + acc,
-      0
-    );
+    const total = this.ratings.reduce((acc, item) => acc + item.rating, 0);
+    this.averageRating = Math.round((total / this.ratings.length) * 10) / 10;
+  } else {
+    this.averageRating = 0;
   }
   next();
 });

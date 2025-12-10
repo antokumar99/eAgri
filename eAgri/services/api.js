@@ -1,12 +1,17 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  API_BASE_URL,
+  REQUEST_TIMEOUT,
+  UPLOAD_TIMEOUT,
+} from "../config/apiConfig";
 
 const api = axios.create({
-  baseURL: "http://192.168.0.103:3000",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000,
+  timeout: REQUEST_TIMEOUT,
 });
 
 // Add request interceptor to automatically add token to all requests
@@ -39,17 +44,25 @@ api.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
+  async (error) => {
     if (error.code === 'ECONNABORTED') {
       console.error('Request timeout - Server might be down');
       throw new Error('Server is not responding. Please try again later.');
-    } else if (!error.response) {
+    }
+
+    if (!error.response) {
       console.error('Network error:', error.message);
       throw new Error('Network connection error. Please check your internet connection and make sure the server is running.');
-    } else {
-      console.error('Response error:', error.response.status, error.response.data);
-      throw error;
     }
+
+    // An expired token used to leave stale credentials in storage, so every
+    // subsequent screen failed with a 401 until the app was reinstalled.
+    if (error.response.status === 401) {
+      await AsyncStorage.multiRemove(['token', 'user']).catch(() => {});
+    }
+
+    console.error('Response error:', error.response.status, error.response.data);
+    throw error;
   }
 );
 
@@ -57,18 +70,17 @@ api.interceptors.response.use(
 api.postFormData = async (url, formData, config = {}) => {
   try {
     const token = await AsyncStorage.getItem('token');
-    console.log('Token for form data:', token);
 
     const defaultConfig = {
       headers: {
         'Content-Type': 'multipart/form-data',
         'Authorization': token ? `Bearer ${token}` : '',
       },
-      timeout: 30000, // Increase timeout for large files
+      timeout: UPLOAD_TIMEOUT, // Uploads carry image payloads
       maxContentLength: Infinity, // Allow large content
       maxBodyLength: Infinity, // Allow large body
     };
-    
+
     const mergedConfig = {
       ...defaultConfig,
       ...config,
@@ -78,22 +90,12 @@ api.postFormData = async (url, formData, config = {}) => {
       },
     };
 
-    console.log('Form data config:', mergedConfig);
-    
-    try {
-      const response = await api.post(url, formData, mergedConfig);
-      return response;
-    } catch (error) {
-      if (error.message === 'Network Error' && config.onUploadProgress) {
-        // If we got a network error but the progress was 100%, the upload probably succeeded
-        const progressEvent = { loaded: 100, total: 100 };
-        config.onUploadProgress(progressEvent);
-        return { data: { success: true, message: 'Post created successfully' } };
-      }
-      throw error;
-    }
+    // A network error was previously swallowed and reported to the caller as
+    // `{ success: true, message: 'Post created successfully' }`. Users were
+    // told their post had been published when nothing had reached the server.
+    return await api.post(url, formData, mergedConfig);
   } catch (error) {
-    console.error('Error in postFormData:', error);
+    console.error('Error in postFormData:', error.message);
     throw error;
   }
 };

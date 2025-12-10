@@ -6,8 +6,6 @@ const fs = require("fs");
 const productController = {
   createProduct: async (req, res) => {
     try {
-      console.log("Request body:", req.body);
-      console.log("Request file:", req.file);
 
       const {
         name,
@@ -374,13 +372,10 @@ const productController = {
 
   getMyProducts: async (req, res) => {
     try {
-      console.log("Fetching products for user:", req.user.id);
 
       const products = await Product.find({ seller: req.user.id })
         .sort({ createdAt: -1 })
         .lean(); // Use lean() for better performance
-
-      console.log("Found products:", products.length);
 
       res.status(200).json({
         success: true,

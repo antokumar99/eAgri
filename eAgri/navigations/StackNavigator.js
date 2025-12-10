@@ -41,7 +41,6 @@ import TrendingScreen from "../screens/TrendingScreen";
 import PeopleProfileScreen from "../screens/PeopleProfileScreen";
 import ChatScreen from "../screens/ChatScreen";
 import MessagesScreen from "../screens/MessagesScreen";
-import OTPverify from "../screens/OTPverify";
 import PaymentSuccessScreen from "../screens/PaymentSuccessScreen";
 import MyOrders from "../screens/MyOrders";
 import ReceivedOrders from "../screens/ReceivedOrders";
@@ -200,7 +199,6 @@ const StackNavigator = () => {
         <Stack.Screen name="CommunityScreen" component={CommunityScreen} />
         <Stack.Screen name="PaymentWebView" component={PaymentWebView} />
         <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
-        <Stack.Screen name="VerifyOTP" component={OTPverify} />
         <Stack.Screen name="AdminLogin" component={AdminLogin} />
         <Stack.Screen name="AdminRegister" component={AdminRegister} />
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
@@ -230,10 +228,12 @@ const StackNavigator = () => {
         <Stack.Screen name="ReceivedRentals" component={ReceivedRentals} />
         <Stack.Screen name="RentalDetails" component={RentalDetailsScreen} />
         <Stack.Screen name="Reviews" component={ReviewsScreen} />
-        <Stack.Screen name="Settings" component={ProfileScreen} />
-        <Stack.Screen name="OrderDetails" component={MyOrders} />
-        <Stack.Screen name="OrderTracking" component={MyOrders} />
         <Stack.Screen name="Weather" component={WeatherScreen} />
+        {/* "Settings", "OrderDetails" and "OrderTracking" used to be registered
+            here pointing at ProfileScreen and MyOrders. They made those screens
+            navigate to themselves — tapping an order in My Orders pushed My
+            Orders again. The screens that referenced them now handle the tap
+            in place instead. */}
       </Stack.Navigator>
     </NavigationContainer>
   );

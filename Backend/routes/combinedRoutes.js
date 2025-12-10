@@ -4,6 +4,7 @@ const AuthController = require("../controllers/AuthController");
 const UserController = require("../controllers/UserController");
 const ResearchController = require("../controllers/ResearchController");
 const authMiddleware = require("../middleware/authMiddleware");
+const optionalAuth = require("../middleware/optionalAuthMiddleware");
 const uploadMiddleware = require("../middleware/uploadMiddleware");
 const PostController = require("../controllers/PostController");
 const adminController = require("../controllers/AdminController");
@@ -83,9 +84,11 @@ router.post(
   uploadMiddleware,
   PostController.createPost
 );
-router.get("/posts", PostController.getAllPosts);
+// optionalAuth so the feed can report each post's isLiked for a signed-in
+// viewer while still rendering for anonymous ones.
+router.get("/posts", optionalAuth, PostController.getAllPosts);
 router.post("/posts/:postId/like", authMiddleware, PostController.likePost);
-router.get("/posts/user/:userId", authMiddleware, PostController.getUserPosts);
+router.get("/posts/user/:userId", optionalAuth, PostController.getUserPosts);
 router.delete("/posts/:postId", authMiddleware, PostController.deletePost);
 router.put(
   "/posts/:postId",
@@ -213,16 +216,41 @@ router.put(
   authMiddleware,
   rentalController.completeRental
 );
+router.post(
+  "/rentals/:rentalId/pay",
+  authMiddleware,
+  paymentController.createRentalPayment
+);
 
 // Payment routes
 router.post("/payment", authMiddleware, paymentController.createPayment);
-router.post(
-  "/payment/success",
+
+// SSLCommerz callbacks. These are hit by the gateway's servers and by the
+// shopper's browser redirect, neither of which carries our JWT — so they must
+// stay unauthenticated. Authenticity is proven by validating val_id against
+// SSLCommerz inside the handlers. Both verbs are registered because SSLCommerz
+// POSTs the result but retries/redirects can arrive as GET.
+router
+  .route("/payment/success")
+  .get(paymentController.paymentSuccess)
+  .post(paymentController.paymentSuccess);
+router
+  .route("/payment/fail")
+  .get(paymentController.paymentFailure)
+  .post(paymentController.paymentFailure);
+router
+  .route("/payment/cancel")
+  .get(paymentController.paymentCancel)
+  .post(paymentController.paymentCancel);
+router.route("/payment/ipn").get(paymentController.paymentIPN).post(paymentController.paymentIPN);
+router.get("/payment/result", paymentController.paymentResult);
+
+// The app polls this after the WebView closes rather than trusting the URL it
+// landed on, so a user cannot self-declare an order paid.
+router.get(
+  "/payment/status/:orderId",
   authMiddleware,
-  paymentController.paymentSuccess
+  paymentController.getPaymentStatus
 );
-router.post("/payment/fail", authMiddleware, paymentController.paymentFailure);
-router.post("/payment/cancel", authMiddleware, paymentController.paymentCancel);
-router.post("/payment/ipn", paymentController.paymentIPN); // No auth for IPN
 
 module.exports = router;

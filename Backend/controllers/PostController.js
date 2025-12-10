@@ -5,13 +5,8 @@ const Comment = require('../models/Comment');
 
 exports.createPost = async (req, res) => {
   try {
-    console.log('Creating post with body:', req.body);
-    console.log('File received:', req.file);
-    console.log('User from request:', req.user);
-    console.log('Headers:', req.headers);
 
     if (!req.user || !req.user.id) {
-      console.log('No user found in request');
       return res.status(401).json({
         success: false,
         error: 'User not authenticated'
@@ -29,19 +24,15 @@ exports.createPost = async (req, res) => {
 
     if (req.file) {
       try {
-        console.log('Uploading image to Cloudinary...');
         const uploadResult = await uploadImage(req.file.path);
-        console.log('Full Cloudinary upload result:', uploadResult);
         
         imagePublicId = uploadResult.public_id;
-        console.log('Image Public ID:', imagePublicId);
 
         // Delete the temporary file after successful upload
         fs.unlink(req.file.path, (err) => {
           if (err) {
             console.error('Error deleting temporary file:', err);
           } else {
-            console.log('Temporary file deleted successfully');
           }
         });
       } catch (uploadError) {
@@ -61,14 +52,11 @@ exports.createPost = async (req, res) => {
       imagePublicId
     };
 
-    console.log('Creating post with data:', postData);
-
     const post = new Post(postData);
     await post.save();
     
     // Explicitly call toJSON to include virtual fields
     const savedPost = post.toJSON();
-    console.log('Post saved successfully:', savedPost);
 
     res.status(201).json({
       success: true,
@@ -90,34 +78,53 @@ exports.createPost = async (req, res) => {
 
 exports.getAllPosts = async (req, res) => {
   try {
-    // Get posts from last 30 days only
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate()-30);
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
 
-    const posts = await Post.find({
-      createdAt: { $gte: tenDaysAgo }
-    })
-      .populate('userId', 'name email')
-      .populate('commentsCount')
-      .sort({ 
-        likes: -1,  // Sort by number of likes first
-        createdAt: -1 // Then by date
-      })
-      .exec();
+    // The feed used to hide anything older than 30 days, so a quiet community
+    // looked empty. Show everything, newest first, and paginate instead.
+    const [posts, total] = await Promise.all([
+      Post.find()
+        .populate('userId', 'name email photo')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .exec(),
+      Post.countDocuments()
+    ]);
 
-    // Get the comments count for each post
-    const postsWithUrls = await Promise.all(posts.map(async post => {
+    // One aggregate beats one countDocuments per post.
+    const counts = await Comment.aggregate([
+      { $match: { postId: { $in: posts.map(p => p._id) } } },
+      { $group: { _id: '$postId', count: { $sum: 1 } } }
+    ]);
+    const countByPost = new Map(counts.map(c => [String(c._id), c.count]));
+
+    // isLiked was never sent, so the client had no way to know which posts the
+    // viewer had already liked and every heart reset to empty on refresh.
+    const viewerId = req.user?.id;
+
+    const data = posts.map(post => {
       const postObj = post.toJSON();
-      const commentsCount = await Comment.countDocuments({ postId: post._id });
       return {
         ...postObj,
-        commentsCount
+        likesCount: post.likes.length,
+        commentsCount: countByPost.get(String(post._id)) || 0,
+        isLiked: viewerId
+          ? post.likes.some(id => id.toString() === viewerId)
+          : false
       };
-    }));
+    });
 
     res.status(200).json({
       success: true,
-      data: postsWithUrls
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasMore: page * limit < total
+      }
     });
   } catch (error) {
     console.error('Error fetching posts:', error);
@@ -142,22 +149,23 @@ exports.likePost = async (req, res) => {
     }
 
     // Check if user has already liked the post
-    const alreadyLiked = post.likes.includes(userId);
-    
-    if (alreadyLiked) {
-      // Unlike the post
-      post.likes = post.likes.filter(id => id.toString() !== userId);
-    } else {
-      // Like the post
-      post.likes.push(userId);
-    }
+    const alreadyLiked = post.likes.some(id => id.toString() === userId);
 
-    await post.save();
+    // $addToSet / $pull rather than read-modify-write: double-tapping the heart
+    // used to be able to record the same user twice and inflate the count.
+    const updated = await Post.findByIdAndUpdate(
+      postId,
+      alreadyLiked
+        ? { $pull: { likes: userId } }
+        : { $addToSet: { likes: userId } },
+      { new: true }
+    );
 
     res.json({
       success: true,
       data: {
-        likes: post.likes.length,
+        likes: updated.likes.length,
+        likesCount: updated.likes.length,
         isLiked: !alreadyLiked
       }
     });
@@ -175,18 +183,26 @@ exports.getUserPosts = async (req, res) => {
     const userId = req.params.userId;
     const posts = await Post.find({ userId })
       .sort({ createdAt: -1 })
-      .populate('userId', 'name email')
-      .populate('likes')
-      .populate('commentsCount')
+      .populate('userId', 'name email photo')
       .exec();
+
+    const counts = await Comment.aggregate([
+      { $match: { postId: { $in: posts.map(p => p._id) } } },
+      { $group: { _id: '$postId', count: { $sum: 1 } } }
+    ]);
+    const countByPost = new Map(counts.map(c => [String(c._id), c.count]));
+
+    const viewerId = req.user?.id;
 
     const postsWithUrls = posts.map(post => {
       const postObj = post.toJSON();
       return {
         ...postObj,
-        isLiked: req.user ? post.likes.some(like => 
-          like._id.toString() === req.user.id
-        ) : false
+        likesCount: post.likes.length,
+        commentsCount: countByPost.get(String(post._id)) || 0,
+        isLiked: viewerId
+          ? post.likes.some(id => id.toString() === viewerId)
+          : false
       };
     });
 
@@ -303,6 +319,8 @@ exports.deletePost = async (req, res) => {
       }
     }
 
+    // Comments used to survive their post and accumulate as orphans.
+    await Comment.deleteMany({ postId: req.params.postId });
     await Post.findByIdAndDelete(req.params.postId);
 
     res.status(200).json({
@@ -341,11 +359,50 @@ exports.getComments = async (req, res) => {
 
 exports.addComment = async (req, res) => {
   try {
+    const text = String(req.body.text || '').trim();
+
+    if (!text) {
+      return res.status(400).json({
+        success: false,
+        error: 'Comment cannot be empty'
+      });
+    }
+
+    if (text.length > 1000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Comment cannot exceed 1000 characters'
+      });
+    }
+
+    // Without this a comment could be attached to a deleted (or made-up) post
+    // and would then be invisible to everyone.
+    const post = await Post.findById(req.params.postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        error: 'Post not found'
+      });
+    }
+
+    // Replies are one level deep: replying to a reply attaches to its parent.
+    let parentId = req.body.parentId || null;
+    if (parentId) {
+      const parent = await Comment.findById(parentId);
+      if (!parent || parent.postId.toString() !== req.params.postId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot reply to that comment'
+        });
+      }
+      parentId = parent.parentId || parent._id;
+    }
+
     const comment = new Comment({
       postId: req.params.postId,
       userId: req.user.id,
-      text: req.body.text,
-      parentId: req.body.parentId || null
+      text,
+      parentId
     });
 
     await comment.save();

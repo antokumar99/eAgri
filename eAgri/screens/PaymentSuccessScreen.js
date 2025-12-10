@@ -15,7 +15,14 @@ import api from "../services/api";
 const { width } = Dimensions.get("window");
 
 const PaymentSuccessScreen = ({ route, navigation }) => {
-  const { orderId, transactionId, orderDetails } = route.params || {};
+  const {
+    orderId,
+    transactionId,
+    orderDetails,
+    paymentMethod = "Online Payment",
+  } = route.params || {};
+
+  const isCod = paymentMethod === "Cash on Delivery";
 
   // Prevent going back with hardware back button or swipe gesture
   useEffect(() => {
@@ -52,13 +59,9 @@ const PaymentSuccessScreen = ({ route, navigation }) => {
     return () => backHandler.remove();
   }, [navigation]);
 
-  const handleTrackOrder = () => {
-    // Navigate to order tracking screen
-    navigation.navigate("OrderTracking", { orderId });
-  };
-
+  // There is no separate tracking screen — My Orders shows live status, and
+  // "OrderTracking" was only ever an alias pointing back at it.
   const handleViewOrders = () => {
-    // Navigate to orders list
     navigation.navigate("MyOrders");
   };
 
@@ -72,19 +75,6 @@ const PaymentSuccessScreen = ({ route, navigation }) => {
     navigation.navigate("Main");
   };
 
-  // const handleDownloadReceipt = async () => {
-  //   try {
-  //     // Generate and download receipt
-  //     const response = await api.get(`/orders/${orderId}/receipt`);
-  //     // Handle receipt download
-  //     Alert.alert(
-  //       "Receipt Downloaded",
-  //       "Your receipt has been saved to your device."
-  //     );
-  //   } catch (error) {
-  //     Alert.alert("Error", "Failed to download receipt. Please try again.");
-  //   }
-  // };
 
   return (
     <ScrollView style={styles.container}>
@@ -100,9 +90,13 @@ const PaymentSuccessScreen = ({ route, navigation }) => {
         <View style={styles.successIconContainer}>
           <MaterialIcons name="check-circle" size={80} color="#4CAF50" />
         </View>
-        <Text style={styles.successTitle}>Payment Successful!</Text>
+        <Text style={styles.successTitle}>
+          {isCod ? "Order Placed!" : "Payment Successful!"}
+        </Text>
         <Text style={styles.successSubtitle}>
-          Your order has been placed successfully
+          {isCod
+            ? "Pay in cash when your order arrives"
+            : "Your order has been placed successfully"}
         </Text>
       </View>
 
@@ -122,14 +116,22 @@ const PaymentSuccessScreen = ({ route, navigation }) => {
             <Text style={styles.infoLabel}>Transaction ID:</Text>
             <Text style={styles.infoValue}>{transactionId}</Text>
           </View>
+          {orderDetails?.total != null && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Amount:</Text>
+              <Text style={styles.infoValue}>৳{orderDetails.total}</Text>
+            </View>
+          )}
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Payment Method:</Text>
-            <Text style={styles.infoValue}>Online Payment</Text>
+            <Text style={styles.infoValue}>{paymentMethod}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Status:</Text>
             <View style={styles.statusContainer}>
-              <Text style={styles.statusText}>Processing</Text>
+              <Text style={styles.statusText}>
+                {isCod ? "Pending" : "Processing"}
+              </Text>
             </View>
           </View>
         </View>
@@ -165,31 +167,11 @@ const PaymentSuccessScreen = ({ route, navigation }) => {
       <View style={styles.actionButtons}>
         <TouchableOpacity
           style={[styles.button, styles.primaryButton]}
-          onPress={handleTrackOrder}
-        >
-          <MaterialIcons name="location-on" size={20} color="#fff" />
-          <Text style={styles.buttonText}>Track Order</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, styles.secondaryButton]}
           onPress={handleViewOrders}
         >
-          <MaterialIcons name="list" size={20} color="#008E97" />
-          <Text style={[styles.buttonText, styles.secondaryButtonText]}>
-            View All Orders
-          </Text>
+          <MaterialIcons name="list" size={20} color="#fff" />
+          <Text style={styles.buttonText}>Track My Orders</Text>
         </TouchableOpacity>
-
-        {/* <TouchableOpacity
-          style={[styles.button, styles.secondaryButton]}
-          onPress={handleDownloadReceipt}
-        >
-          <MaterialIcons name="download" size={20} color="#008E97" />
-          <Text style={[styles.buttonText, styles.secondaryButtonText]}>
-            Download Receipt
-          </Text>
-        </TouchableOpacity> */}
 
         <TouchableOpacity
           style={[styles.button, styles.continueButton]}

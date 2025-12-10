@@ -16,6 +16,11 @@ import api from "../services/api";
 
 const { width } = Dimensions.get("window");
 
+// Mirrors Backend/config/appConfig.js `pricing`. The server is authoritative;
+// these are only used to show the breakdown before the order is priced.
+const DELIVERY_FEE = 50;
+const COD_FEE = 30;
+
 const CheckoutScreen = ({ route, navigation }) => {
   const { total, cartItems } = route.params;
   const [loading, setLoading] = useState(true);
@@ -75,13 +80,35 @@ const CheckoutScreen = ({ route, navigation }) => {
     }
   };
 
+  const codFee = selectedPaymentMethod === "cod" ? COD_FEE : 0;
+  const grandTotal = total + DELIVERY_FEE + codFee;
+
   const validateForm = () => {
-    for (let key in address) {
-      if (!address[key]) {
-        Alert.alert("Error", "Please fill in all address fields");
-        return false;
-      }
+    const labels = {
+      street: "Street Address",
+      city: "City",
+      state: "State",
+      zipCode: "ZIP Code",
+      phone: "Phone Number",
+    };
+
+    const missing = Object.keys(labels).filter(
+      (key) => !String(address[key] || "").trim()
+    );
+
+    if (missing.length) {
+      Alert.alert(
+        "Incomplete Address",
+        `Please fill in: ${missing.map((k) => labels[k]).join(", ")}`
+      );
+      return false;
     }
+
+    if (!/^\+?[\d\s-]{7,15}$/.test(address.phone.trim())) {
+      Alert.alert("Invalid Phone", "Please enter a valid phone number");
+      return false;
+    }
+
     return true;
   };
 
@@ -108,24 +135,20 @@ const CheckoutScreen = ({ route, navigation }) => {
 
   const handleOnlinePayment = async () => {
     try {
-      // Create order with payment request
+      // The server prices the order from its own product records; only the
+      // address and the item/quantity list are sent.
       const response = await api.post("/payment", {
         address,
-        total: total + 50, // Including delivery fee
         cartItems,
-        paymentMethod: "Online Payment",
       });
 
-      console.log("Payment response:", response.data);
-
       if (response.data.success) {
-        console.log("Go to web");
         // Navigate to payment gateway
         navigation.navigate("PaymentWebView", {
           paymentUrl: response.data.paymentUrl,
           orderId: response.data.orderId,
           orderDetails: {
-            total: total + 50,
+            total: response.data.amount,
             items: cartItems,
             address,
           },
@@ -138,7 +161,11 @@ const CheckoutScreen = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error("Error creating payment:", error);
-      Alert.alert("Error", "Failed to process payment. Please try again.");
+      Alert.alert(
+        "Payment Failed",
+        error.response?.data?.message ||
+          "Failed to start payment. Please try again."
+      );
     }
   };
 
@@ -147,9 +174,7 @@ const CheckoutScreen = ({ route, navigation }) => {
       // Create order for Cash on Delivery
       const response = await api.post("/orders/create", {
         address,
-        total: total + 50,
         cartItems,
-        paymentMethod: "Cash on Delivery",
       });
 
       if (response.data.success) {
@@ -162,9 +187,10 @@ const CheckoutScreen = ({ route, navigation }) => {
               onPress: () => {
                 navigation.navigate("PaymentSuccess", {
                   orderId: response.data.orderId,
-                  transactionId: `COD_${response.data.orderId}`,
+                  transactionId: response.data.order?.transactionId,
+                  paymentMethod: "Cash on Delivery",
                   orderDetails: {
-                    total: total + 50,
+                    total: response.data.order?.totalPrice ?? grandTotal,
                     items: cartItems,
                     address,
                   },
@@ -308,19 +334,17 @@ const CheckoutScreen = ({ route, navigation }) => {
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Delivery Fee</Text>
-              <Text style={styles.summaryValue}>৳50</Text>
+              <Text style={styles.summaryValue}>৳{DELIVERY_FEE}</Text>
             </View>
-            {selectedPaymentMethod === "cod" && (
+            {codFee > 0 && (
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>COD Fee</Text>
-                <Text style={styles.summaryValue}>৳30</Text>
+                <Text style={styles.summaryValue}>৳{codFee}</Text>
               </View>
             )}
             <View style={[styles.summaryRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>
-                ৳{total + 50 + (selectedPaymentMethod === "cod" ? 30 : 0)}
-              </Text>
+              <Text style={styles.totalValue}>৳{grandTotal}</Text>
             </View>
           </View>
         </View>

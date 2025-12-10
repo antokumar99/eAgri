@@ -85,8 +85,9 @@ class ChatService {
       const userRef = doc(db, this.usersCollection, this.currentUser._id);
       await setDoc(userRef, {
         userId: this.currentUser._id,
-        username: this.currentUser.username,
-        email: this.currentUser.email,
+        username:
+          this.currentUser.username || this.currentUser.name || 'User',
+        email: this.currentUser.email || null,
         isOnline,
         lastSeen: serverTimestamp(),
         avatar: this.currentUser.avatar || null
@@ -134,11 +135,14 @@ class ChatService {
     }
 
     try {
-      const now = new Date();
+      // Firestore rejects a document containing `undefined`, so every optional
+      // field needs an explicit fallback — a user record saved without a
+      // username used to make the whole send fail with an opaque error.
       const messageData = {
         chatId,
         senderId: this.currentUser._id,
-        senderName: this.currentUser.username,
+        senderName:
+          this.currentUser.username || this.currentUser.name || 'User',
         senderAvatar: this.currentUser.avatar || null,
         text: text.trim(),
         messageType,
@@ -391,6 +395,39 @@ class ChatService {
     } catch (error) {
       console.error('Error cleaning up demo chats:', error);
       return [];
+    }
+  }
+
+  /**
+   * Unread message count per chat for the current user.
+   *
+   * The Messages list previously hard-coded `unreadCount: 0`, so a new message
+   * was indistinguishable from a read one. Counting is done in a single query
+   * with client-side grouping to avoid needing a composite Firestore index per
+   * chat room.
+   */
+  async getUnreadCounts() {
+    if (!this.currentUser) return {};
+
+    try {
+      const q = query(
+        collection(db, this.messagesCollection),
+        where('isRead', '==', false)
+      );
+
+      const snapshot = await getDocs(q);
+      const counts = {};
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.senderId === this.currentUser._id) return;
+        counts[data.chatId] = (counts[data.chatId] || 0) + 1;
+      });
+
+      return counts;
+    } catch (error) {
+      console.error('Error counting unread messages:', error);
+      return {};
     }
   }
 

@@ -11,7 +11,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
-import Icon from "react-native-vector-icons/Ionicons";
+import { Ionicons as Icon } from "@expo/vector-icons";
 
 export default function AddressEditScreen() {
   const navigation = useNavigation();

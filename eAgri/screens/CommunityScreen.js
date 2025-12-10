@@ -13,6 +13,7 @@ import {
   RefreshControl,
   ImageBackground,
   Dimensions,
+  Share,
 } from "react-native";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -28,7 +29,6 @@ const CommunityFeed = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [originalPosts, setOriginalPosts] = useState([]); // For search functionality
   const [refreshing, setRefreshing] = useState(false);
-  const [likedPosts, setLikedPosts] = useState(new Set());
   const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
@@ -52,13 +52,12 @@ const CommunityFeed = ({ navigation }) => {
 
   const fetchPosts = async () => {
     try {
+      // The server already sorts newest-first and now reports isLiked and
+      // likesCount per post, so the like state survives a refresh.
       const response = await api.get("/posts");
       if (response.data.success) {
-        const postsWithImages = response.data.data
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-          .map((post) => post);
-        setPosts(postsWithImages);
-        setOriginalPosts(postsWithImages);
+        setPosts(response.data.data);
+        setOriginalPosts(response.data.data);
       }
     } catch (error) {
       console.error("Error fetching posts:", error);
@@ -88,30 +87,63 @@ const CommunityFeed = ({ navigation }) => {
     fetchPosts();
   }, []);
 
-  const handleLike = async (postId) => {
+  // Applies a change to both the visible list and the unfiltered copy, so a
+  // like registered while a search is active isn't lost when the search clears.
+  const patchPost = (postId, patch) => {
+    const apply = (list) =>
+      list.map((p) => (p._id === postId ? { ...p, ...patch } : p));
+    setPosts(apply);
+    setOriginalPosts(apply);
+  };
+
+  const handleLike = async (post) => {
+    const optimistic = {
+      isLiked: !post.isLiked,
+      likesCount: (post.likesCount ?? 0) + (post.isLiked ? -1 : 1),
+    };
+
+    // Update immediately, then reconcile — the old version re-fetched the whole
+    // feed on every tap, which made the heart lag by a full round trip.
+    patchPost(post._id, optimistic);
+
     try {
-      const response = await api.post(`/posts/${postId}/like`);
+      const response = await api.post(`/posts/${post._id}/like`);
       if (response.data.success) {
-        // Update local state
-        setLikedPosts((prev) => {
-          const newSet = new Set(prev);
-          if (response.data.data.isLiked) {
-            newSet.add(postId);
-          } else {
-            newSet.delete(postId);
-          }
-          return newSet;
+        patchPost(post._id, {
+          isLiked: response.data.data.isLiked,
+          likesCount: response.data.data.likesCount,
         });
-        // Refresh posts to get updated like count
-        fetchPosts();
       }
     } catch (error) {
       console.error("Error liking post:", error);
+      patchPost(post._id, { isLiked: post.isLiked, likesCount: post.likesCount });
     }
   };
 
-  const handleCommentUpdate = () => {
-    fetchPosts(); // This will refresh the posts and comment counts
+  const handleShare = async (post) => {
+    try {
+      const author = post.userId?.name || "a farmer";
+      const body = post.text?.length > 200
+        ? `${post.text.slice(0, 200)}...`
+        : post.text;
+
+      await Share.share({
+        title: `eAgri post by ${author}`,
+        message: `${body}\n\nShared from the eAgri community${
+          post.imageUrl ? `\n${post.imageUrl}` : ""
+        }`,
+      });
+    } catch (error) {
+      console.error("Error sharing post:", error);
+    }
+  };
+
+  const handleCommentUpdate = (postId, commentsCount) => {
+    if (postId && typeof commentsCount === "number") {
+      patchPost(postId, { commentsCount });
+    } else {
+      fetchPosts();
+    }
   };
 
   const handleUserNamePress = (userId, userName) => {
@@ -190,15 +222,20 @@ const CommunityFeed = ({ navigation }) => {
 
           <View style={styles.postActions}>
             <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleLike(item._id)}
+              style={[styles.actionButton, item.isLiked && styles.actionButtonActive]}
+              onPress={() => handleLike(item)}
+              activeOpacity={0.7}
             >
               <MaterialIcons
-                name={likedPosts.has(item._id) ? "favorite" : "favorite-border"}
-                size={24}
-                color={likedPosts.has(item._id) ? "#FF902F" : "#666"}
+                name={item.isLiked ? "favorite" : "favorite-border"}
+                size={22}
+                color={item.isLiked ? "#FF902F" : "#666"}
               />
-              <Text style={styles.actionText}>{item.likes?.length || 0}</Text>
+              <Text
+                style={[styles.actionText, item.isLiked && styles.actionTextActive]}
+              >
+                {item.likesCount ?? item.likes?.length ?? 0}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -206,10 +243,11 @@ const CommunityFeed = ({ navigation }) => {
               onPress={() =>
                 navigation.navigate("CommentScreen", {
                   postId: item._id,
-                  postOwnerId: item.userId._id,
+                  postOwnerId: item.userId?._id,
                   onCommentUpdate: handleCommentUpdate,
                 })
               }
+              activeOpacity={0.7}
             >
               <MaterialIcons
                 name="chat-bubble-outline"
@@ -217,6 +255,15 @@ const CommunityFeed = ({ navigation }) => {
                 color="#666"
               />
               <Text style={styles.actionText}>{item.commentsCount || 0}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleShare(item)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="share" size={22} color="#666" />
+              <Text style={styles.actionText}>Share</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -443,17 +490,23 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    marginRight: 24,
+    marginRight: 10,
     backgroundColor: "#F7F9F7",
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderRadius: 20,
+  },
+  actionButtonActive: {
+    backgroundColor: "#FFF3E8",
   },
   actionText: {
     marginLeft: 6,
     color: "#2D6A4F",
     fontSize: 14,
     fontWeight: "600",
+  },
+  actionTextActive: {
+    color: "#FF902F",
   },
   emptyContainer: {
     alignItems: "center",

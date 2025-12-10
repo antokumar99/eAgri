@@ -4,79 +4,6 @@
 // const { validationResult } = require('express-validator');
 
 
-
-// exports.register = async (req, res) => {
-//     const { username, email, password, phone } = req.body;
-//     const errors = validationResult(req);
-//     if (!errors.isEmpty()) {
-//         return res.status(400).json({ errors: errors.array() });
-//     }
-//     try {
-//         let user = await Auth.findOne({ email });
-//         if (user) {
-//             return res.status(400).json({ msg: 'User already exists' });
-//         }
-//         user = new Auth({
-//             username,
-//             email,
-//             password,
-//             phone
-//         });
-//         const salt = await bcrypt.genSalt(10);
-//         user.password = await bcrypt.hash(password, salt);
-//         await user.save();
-//         const payload = {
-//             user: {
-//                 id: user.id
-//             }
-//         };
-//         const secret = process.env.JWT_SECRET || 'default_secret_key';
-//         jwt.sign(payload, secret, {
-//             expiresIn: 3600
-//         }, (err, token) => {
-//             if (err) throw err;
-//             res.json({ token });
-//         });
-//     } catch (err) {
-//         console.error(err.message);
-//         res.status(500).json({ error: err.message });
-//     }
-// }
-
-// exports.login = async (req, res) => {
-//     const { email, password } = req.body;
-//     const errors = validationResult(req);
-//     if (!errors.isEmpty()) {
-//         return res.status(400).json({ errors: errors.array() });
-//     }
-//     try {
-//         let user = await Auth.findOne({ email });
-//         if (!user) {
-//             return res.status(400).json({ msg: 'Invalid Credentials' });
-//         }
-//         const isMatch = await bcrypt.compare(password, user.password);
-//         if (!isMatch) {
-//             return res.status(400).json({ msg: 'Invalid Credentials' });
-//         }
-//         const payload = {
-//             user: {
-//                 id: user.id
-//             }
-//         };
-//         const secret = process.env.JWT_SECRET || 'default_secret_key';
-//         jwt.sign(payload, secret, {
-//             expiresIn: 3600
-//         }, (err, token) => {
-//             if (err) throw err;
-//             res.json({ token });
-//         });
-//         res.status(200).json({ msg: 'User logged in' });
-//     } catch (err) {
-//         console.error(err.message);
-//         res.status(500).json({ error: err.message });
-//     }
-// }
-
 // controllers/AuthController.js
 
 const bcrypt = require('bcrypt');
@@ -176,40 +103,12 @@ module.exports = {
     }
   },
 
-  // -------------------------------
-  // 2) Verify Email
-  // -------------------------------
-  // verifyEmail: async (req, res) => {
-  //   try {
-  //     const { token } = req.params;
-
-  //     // Find user by verificationToken
-  //     const user = await User.findOne({ verificationToken: token });
-  //     if (!user) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: 'Invalid or expired verification token'
-  //       });
-  //     }
 
   //     // Mark user as verified
   //     user.verified = true;
   //     user.verificationToken = undefined; // clear the token
   //     await user.save();
 
-  //     return res.status(200).json({
-  //       success: true,
-  //       message: 'Email verified successfully! You may now login.'
-  //     });
-  //   } catch (error) {
-  //     console.error(error);
-  //     return res.status(500).json({
-  //       success: false,
-  //       message: 'Something went wrong during email verification',
-  //       error: error.message
-  //     });
-  //   }
-  // },
   verifyEmail: async (req, res) => {
     try {
       const { token } = req.params;
@@ -415,8 +314,6 @@ module.exports = {
           expiresIn: '24h'
         }
       );
-
-      console.log('Generated token:', token);
 
       return res.status(200).json({
         success: true,

@@ -24,6 +24,30 @@ const RentalDetailsScreen = ({ route, navigation }) => {
     fetchRentalDetails();
   }, []);
 
+  const handlePayNow = async () => {
+    try {
+      setActionLoading(true);
+      const { data } = await api.post(`/rentals/${rentalId}/pay`);
+
+      if (data.success) {
+        navigation.navigate("PaymentWebView", {
+          paymentUrl: data.paymentUrl,
+          orderId: data.rentalId,
+          orderDetails: { total: data.amount, rentalId },
+        });
+      } else {
+        Alert.alert("Error", data.message || "Could not start payment");
+      }
+    } catch (error) {
+      Alert.alert(
+        "Payment Failed",
+        error.response?.data?.message || "Could not start payment"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const fetchRentalDetails = async () => {
     try {
       setLoading(true);
@@ -445,6 +469,29 @@ const RentalDetailsScreen = ({ route, navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Actions</Text>
           <View style={styles.actionContainer}>
+            {/* Rentals were created with paymentMethod "online" but there was
+                no way to actually pay, so every one stayed unpaid forever. */}
+            {rental.paymentStatus !== "paid" &&
+              rental.status !== "cancelled" &&
+              rental.status !== "completed" && (
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.payButton]}
+                  onPress={handlePayNow}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <MaterialIcons name="payment" size={20} color="#fff" />
+                      <Text style={styles.actionButtonText}>
+                        Pay ৳{rental.totalPrice}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+
             {rental.status === "pending" && (
               <>
                 <TouchableOpacity
@@ -713,6 +760,9 @@ const styles = StyleSheet.create({
   },
   extendButton: {
     backgroundColor: "#FF9800",
+  },
+  payButton: {
+    backgroundColor: "#008E97",
   },
   completeButton: {
     backgroundColor: "#2196F3",

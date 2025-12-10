@@ -43,7 +43,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     elevation: 3,
     borderWidth: 1,
-
   },
   cardImage: {
     width: 100,

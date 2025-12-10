@@ -18,49 +18,12 @@ export default function PostDetailsScreen({ route }) {
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
 
-  //   const fetchPostDetails = async () => {
-  //     try {
-  //       const res = await API.get(`/posts/${postId}`);
-  //       setPost(res.data);
-  //     } catch (err) {
-  //       console.error(err);
-  //     }
-  //   };
-
-  //   const fetchComments = async () => {
-  //     try {
-  //       const res = await API.get(`/comments/${postId}`);
-  //       setComments(res.data);
-  //     } catch (err) {
-  //       console.error(err);
-  //     }
-  //   };
 
   //   useEffect(() => {
   //     fetchPostDetails();
   //     fetchComments();
   //   }, []);
 
-  //   const handleLike = async () => {
-  //     try {
-  //       await API.post(`/posts/${postId}/like`);
-  //       fetchPostDetails(); // update post data
-  //     } catch (err) {
-  //       console.error(err);
-  //     }
-  //   };
-
-  //   const handleAddComment = async () => {
-  //     try {
-  //       if (!commentText.trim()) return;
-  //       await API.post('/comments', { postId, text: commentText });
-  //       setCommentText('');
-  //       fetchComments();
-  //     } catch (err) {
-  //       console.error(err);
-  //       Alert.alert('Error', 'Could not add comment.');
-  //     }
-  //   };
 
   if (!post) {
     return (

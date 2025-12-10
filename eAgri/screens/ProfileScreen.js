@@ -16,18 +16,22 @@ import {
   RefreshControl,
   Modal,
 } from "react-native";
-import Icon from "react-native-vector-icons/Ionicons";
+import { Ionicons as Icon } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Header from "../components/Header";
 import api from "../services/api";
+import chatService from "../services/chatService";
 
 const { width, height } = Dimensions.get("window");
 const DRAWER_WIDTH = width * 0.8;
-const drawerAnimation = new Animated.Value(0);
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
+  // Was a module-level Animated.Value, so the drawer position was shared by
+  // every mount of this screen and survived navigating away — the drawer could
+  // come back already open.
+  const drawerAnimation = React.useRef(new Animated.Value(0)).current;
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -75,31 +79,35 @@ export default function ProfileScreen() {
     },
     {
       id: 7,
-      label: "Settings",
-      icon: "settings-outline",
-      onPress: () => navigation.navigate("Settings"),
-    },
-    {
-      id: 8,
       label: "Logout",
       icon: "log-out-outline",
-      onPress: async () => {
-        try {
-          // await AsyncStorage.removeItem("token");
-          // console.log("Logged out");
-          // navigation.replace("Login");
-          // Clear the location data
-          global.userLocation = null;
+      onPress: () => {
+        Alert.alert("Log out", "Are you sure you want to log out?", [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Log out",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                global.userLocation = null;
 
-          // Clear the token and other data
-          await AsyncStorage.clear();
+                // Mark the user offline and drop Firestore listeners, which
+                // otherwise kept them showing as online to everyone.
+                await chatService.logout().catch(() => {});
 
-          // Navigate to login
-          navigation.replace("Login");
-        } catch (error) {
-          console.error("Error logging out:", error);
-          Alert.alert("Error", "Failed to log out");
-        }
+                // Remove only the session keys. AsyncStorage.clear() also wiped
+                // "isFirstLaunch", so logging out sent the user back through
+                // onboarding as if they had just installed the app.
+                await AsyncStorage.multiRemove(["token", "user"]);
+
+                navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+              } catch (error) {
+                console.error("Error logging out:", error);
+                Alert.alert("Error", "Failed to log out");
+              }
+            },
+          },
+        ]);
       },
     },
   ];
@@ -152,16 +160,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // const handleLogout = async () => {
-  //   try {
-  //     await AsyncStorage.removeItem("token");
-  //     console.log("Logged out");
-  //     navigation.replace("Login");
-  //   } catch (error) {
-  //     console.error("Error logging out:", error);
-  //     Alert.alert("Error", "Failed to logout");
-  //   }
-  // };
 
   const fetchUserPosts = async () => {
     try {

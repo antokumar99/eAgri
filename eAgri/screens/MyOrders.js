@@ -17,6 +17,7 @@ const MyOrders = ({ navigation }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -86,8 +87,10 @@ const MyOrders = ({ navigation }) => {
     });
   };
 
+  // Expand in place. There is no separate order-details screen; this used to
+  // navigate to "OrderDetails", which was registered as this same screen.
   const handleOrderPress = (order) => {
-    navigation.navigate("OrderDetails", { orderId: order._id });
+    setExpandedOrderId((current) => (current === order._id ? null : order._id));
   };
 
   const renderOrderCard = (order) => (
@@ -114,16 +117,19 @@ const MyOrders = ({ navigation }) => {
       </View>
 
       <View style={styles.orderItems}>
-        {order.products.slice(0, 2).map((item, index) => (
+        {(expandedOrderId === order._id
+          ? order.products
+          : order.products.slice(0, 2)
+        ).map((item, index) => (
           <View key={index} style={styles.orderItem}>
             <Image
-              source={{ uri: item.product.image }}
+              source={{ uri: item.product?.image }}
               style={styles.productImage}
               defaultSource={require("../assets/rice.jpg")}
             />
             <View style={styles.itemDetails}>
               <Text style={styles.productName} numberOfLines={2}>
-                {item.product.name}
+                {item.product?.name || "Product no longer available"}
               </Text>
               <Text style={styles.itemQuantity}>
                 Qty: {item.quantity} × ৳{item.price}
@@ -133,10 +139,41 @@ const MyOrders = ({ navigation }) => {
         ))}
         {order.products.length > 2 && (
           <Text style={styles.moreItems}>
-            +{order.products.length - 2} more items
+            {expandedOrderId === order._id
+              ? "Show less"
+              : `+${order.products.length - 2} more items`}
           </Text>
         )}
       </View>
+
+      {expandedOrderId === order._id && (
+        <View style={styles.breakdown}>
+          {order.subtotal > 0 && (
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Subtotal</Text>
+              <Text style={styles.breakdownValue}>৳{order.subtotal}</Text>
+            </View>
+          )}
+          {order.deliveryFee > 0 && (
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Delivery</Text>
+              <Text style={styles.breakdownValue}>৳{order.deliveryFee}</Text>
+            </View>
+          )}
+          {order.codFee > 0 && (
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Cash on delivery</Text>
+              <Text style={styles.breakdownValue}>৳{order.codFee}</Text>
+            </View>
+          )}
+          {order.shippingAddress?.street && (
+            <Text style={styles.shipTo}>
+              Ship to: {order.shippingAddress.street},{" "}
+              {order.shippingAddress.city} {order.shippingAddress.zipCode}
+            </Text>
+          )}
+        </View>
+      )}
 
       <View style={styles.orderFooter}>
         <View style={styles.paymentInfo}>
@@ -370,6 +407,31 @@ const styles = StyleSheet.create({
     color: "#008E97",
     fontStyle: "italic",
     marginTop: 4,
+  },
+  breakdown: {
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    paddingTop: 10,
+    marginTop: 10,
+    gap: 4,
+  },
+  breakdownRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  breakdownLabel: {
+    fontSize: 13,
+    color: "#666",
+  },
+  breakdownValue: {
+    fontSize: 13,
+    color: "#2c3e50",
+    fontWeight: "500",
+  },
+  shipTo: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 6,
   },
   orderFooter: {
     flexDirection: "row",

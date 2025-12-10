@@ -2,6 +2,10 @@ const Rental = require("../models/Rental");
 const Product = require("../models/Product");
 const User = require("../models/User");
 
+/** Days billed per unit of duration. Also used to derive the end date, so the
+ *  price a renter is quoted always matches the period they actually get. */
+const DAYS_PER_UNIT = { day: 1, week: 7, month: 30 };
+
 const rentalController = {
   // Create a new rental
   createRental: async (req, res) => {
@@ -17,6 +21,22 @@ const rentalController = {
       } = req.body;
       const userId = req.user.id;
 
+      // Validate duration unit
+      if (!DAYS_PER_UNIT[durationUnit]) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid duration unit. Must be day, week, or month",
+        });
+      }
+
+      const duration = Number(durationValue);
+      if (!Number.isInteger(duration) || duration < 1 || duration > 365) {
+        return res.status(400).json({
+          success: false,
+          message: "Duration must be a whole number between 1 and 365",
+        });
+      }
+
       const product = await Product.findById(productId).populate("seller");
       if (!product) {
         return res.status(404).json({
@@ -25,77 +45,99 @@ const rentalController = {
         });
       }
 
-      if (product.stock < 1) {
+      // Buy-only listings have no rentPrice, which used to produce a rental
+      // with a NaN total that failed validation with an unhelpful message.
+      if (product.productType !== "rent" && product.productType !== "both") {
         return res.status(400).json({
           success: false,
-          message: "Product out of stock",
+          message: "This product is not available for rent",
         });
       }
 
-      // Validate duration unit
-      if (!["day", "week", "month"].includes(durationUnit)) {
+      if (typeof product.rentPrice !== "number" || product.rentPrice <= 0) {
         return res.status(400).json({
           success: false,
-          message: "Invalid duration unit. Must be day, week, or month",
+          message: "This product has no valid rental price",
         });
       }
 
-      // Calculate end date based on duration
-      const start = new Date(startDate || new Date());
-      let endDate = new Date(start);
-
-      switch (durationUnit) {
-        case "day":
-          endDate.setDate(start.getDate() + durationValue);
-          break;
-        case "week":
-          endDate.setDate(start.getDate() + durationValue * 7);
-          break;
-        case "month":
-          endDate.setMonth(start.getMonth() + durationValue);
-          break;
+      if (product.seller._id.toString() === userId) {
+        return res.status(400).json({
+          success: false,
+          message: "You cannot rent your own product",
+        });
       }
 
-      // Calculate total price
-      let totalPrice = 0;
-      switch (durationUnit) {
-        case "day":
-          totalPrice = product.rentPrice * durationValue;
-          break;
-        case "week":
-          totalPrice = product.rentPrice * durationValue * 7;
-          break;
-        case "month":
-          totalPrice = product.rentPrice * durationValue * 30;
-          break;
+      const start = new Date(startDate || Date.now());
+      if (isNaN(start.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid start date",
+        });
       }
 
-      const rental = new Rental({
-        product: productId,
-        user: userId,
-        seller: product.seller._id,
-        startDate: start,
-        endDate: endDate,
-        duration: {
-          value: durationValue,
-          unit: durationUnit,
-        },
-        totalPrice: totalPrice,
-        paymentMethod: paymentMethod || "online",
-        shippingAddress: shippingAddress || {},
-        notes: notes || "",
-      });
+      // Allow today, but not a date in the past.
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      if (start < startOfToday) {
+        return res.status(400).json({
+          success: false,
+          message: "Start date cannot be in the past",
+        });
+      }
 
-      // Decrease product stock
-      product.stock -= 1;
+      // End date and price are both derived from the same day count, so a
+      // one-month rental is billed for exactly the 30 days it is held. The old
+      // code advanced the calendar month but charged a flat 30 days.
+      const totalDays = duration * DAYS_PER_UNIT[durationUnit];
+      const endDate = new Date(start);
+      endDate.setDate(start.getDate() + totalDays);
 
-      await Promise.all([rental.save(), product.save()]);
+      const totalPrice = product.rentPrice * totalDays;
 
-      res.status(201).json({
-        success: true,
-        message: "Rental created successfully",
-        rental: rental,
-      });
+      // Conditional decrement so two renters cannot claim the last unit.
+      const claimed = await Product.findOneAndUpdate(
+        { _id: product._id, stock: { $gte: 1 } },
+        { $inc: { stock: -1 } },
+        { new: true }
+      );
+
+      if (!claimed) {
+        return res.status(400).json({
+          success: false,
+          message: "Product is currently out of stock",
+        });
+      }
+
+      try {
+        const rental = new Rental({
+          product: productId,
+          user: userId,
+          seller: product.seller._id,
+          startDate: start,
+          endDate: endDate,
+          duration: {
+            value: duration,
+            unit: durationUnit,
+          },
+          totalPrice: totalPrice,
+          paymentMethod: paymentMethod || "online",
+          shippingAddress: shippingAddress || {},
+          notes: notes || "",
+        });
+
+        await rental.save();
+
+        res.status(201).json({
+          success: true,
+          message: "Rental created successfully",
+          rental: rental,
+        });
+      } catch (saveError) {
+        // Put the unit back if the rental itself could not be persisted.
+        await Product.findByIdAndUpdate(product._id, { $inc: { stock: 1 } });
+        throw saveError;
+      }
     } catch (error) {
       console.error("Error creating rental:", error);
       res.status(500).json({
@@ -265,16 +307,44 @@ const rentalController = {
         });
       }
 
+      // Only allow sensible transitions. Without this a seller could flip a
+      // completed rental back to active and return the unit to stock twice.
+      const transitions = {
+        pending: ["active", "cancelled"],
+        active: ["completed", "cancelled", "overdue"],
+        overdue: ["completed", "cancelled"],
+        completed: [],
+        cancelled: [],
+      };
+
+      if (rental.status === status) {
+        return res.status(200).json({
+          success: true,
+          message: "Rental status unchanged",
+          rental,
+        });
+      }
+
+      if (!transitions[rental.status]?.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot change a ${rental.status} rental to ${status}`,
+        });
+      }
+
+      const wasReserved = ["pending", "active", "overdue"].includes(rental.status);
+
       rental.status = status;
 
-      // If completing rental, update product stock
-      if (status === "completed") {
-        const product = await Product.findById(rental.product);
-        if (product) {
-          product.stock += 1;
-          await product.save();
-        }
+      // The unit goes back to the seller whether the rental ended normally or
+      // was cancelled — the old code only handled "completed".
+      if ((status === "completed" || status === "cancelled") && wasReserved) {
+        await Product.findByIdAndUpdate(rental.product, { $inc: { stock: 1 } });
         rental.returnedAt = new Date();
+
+        if (status === "completed") {
+          rental.lateFees = rental.calculateLateFees();
+        }
       }
 
       await rental.save();
@@ -317,45 +387,54 @@ const rentalController = {
         });
       }
 
-      if (rental.status !== "active") {
+      if (rental.status !== "active" && rental.status !== "overdue") {
         return res.status(400).json({
           success: false,
           message: "Can only extend active rentals",
         });
       }
 
-      // Calculate new end date
-      let newEndDate = new Date(rental.endDate);
-      switch (durationUnit) {
-        case "day":
-          newEndDate.setDate(newEndDate.getDate() + additionalDuration);
-          break;
-        case "week":
-          newEndDate.setDate(newEndDate.getDate() + additionalDuration * 7);
-          break;
-        case "month":
-          newEndDate.setMonth(newEndDate.getMonth() + additionalDuration);
-          break;
+      if (!DAYS_PER_UNIT[durationUnit]) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid duration unit. Must be day, week, or month",
+        });
       }
 
-      // Calculate additional cost
-      const product = await Product.findById(rental.product);
-      let additionalCost = 0;
-      switch (durationUnit) {
-        case "day":
-          additionalCost = product.rentPrice * additionalDuration;
-          break;
-        case "week":
-          additionalCost = product.rentPrice * additionalDuration * 7;
-          break;
-        case "month":
-          additionalCost = product.rentPrice * additionalDuration * 30;
-          break;
+      const extra = Number(additionalDuration);
+      if (!Number.isInteger(extra) || extra < 1 || extra > 365) {
+        return res.status(400).json({
+          success: false,
+          message: "Extension must be a whole number between 1 and 365",
+        });
       }
+
+      const product = await Product.findById(rental.product);
+      if (!product || typeof product.rentPrice !== "number") {
+        return res.status(404).json({
+          success: false,
+          message: "Product is no longer available for rent",
+        });
+      }
+
+      // Same day-count basis as createRental, so extending by a month costs
+      // the same as renting for a month.
+      const extraDays = extra * DAYS_PER_UNIT[durationUnit];
+      const newEndDate = new Date(rental.endDate);
+      newEndDate.setDate(newEndDate.getDate() + extraDays);
 
       rental.endDate = newEndDate;
-      rental.totalPrice += additionalCost;
-      rental.duration.value += additionalDuration;
+      rental.totalPrice += product.rentPrice * extraDays;
+
+      // duration.value counts units of duration.unit; adding a week's worth of
+      // days to a rental booked in days would otherwise corrupt the figure.
+      rental.duration.value += Math.round(
+        extraDays / DAYS_PER_UNIT[rental.duration.unit]
+      );
+
+      if (rental.status === "overdue") {
+        rental.status = "active";
+      }
 
       await rental.save();
 
@@ -406,15 +485,19 @@ const rentalController = {
         });
       }
 
+      // The unit must be read *before* the status is overwritten. Previously
+      // `rental.status = "cancelled"` ran first and the following
+      // `if (rental.status === "pending")` could never be true, so cancelling
+      // a rental permanently lost a unit of the seller's stock.
+      const wasReserved = rental.status === "pending" || rental.status === "active";
+
       rental.status = "cancelled";
 
-      // Return product to stock if not yet started
-      if (rental.status === "pending") {
-        const product = await Product.findById(rental.product);
-        if (product) {
-          product.stock += 1;
-          await product.save();
-        }
+      if (wasReserved) {
+        await Product.findByIdAndUpdate(rental.product, {
+          $inc: { stock: 1 },
+        });
+        rental.returnedAt = new Date();
       }
 
       await rental.save();
@@ -456,22 +539,19 @@ const rentalController = {
         });
       }
 
-      if (rental.status !== "active") {
+      if (rental.status !== "active" && rental.status !== "overdue") {
         return res.status(400).json({
           success: false,
           message: "Can only complete active rentals",
         });
       }
 
+      rental.lateFees = rental.calculateLateFees();
       rental.status = "completed";
       rental.returnedAt = new Date();
 
       // Return product to stock
-      const product = await Product.findById(rental.product);
-      if (product) {
-        product.stock += 1;
-        await product.save();
-      }
+      await Product.findByIdAndUpdate(rental.product, { $inc: { stock: 1 } });
 
       await rental.save();
 

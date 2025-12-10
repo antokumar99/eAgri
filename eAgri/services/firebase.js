@@ -23,7 +23,6 @@ const firebaseConfig = {
 };
 
 
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
@@ -35,14 +34,5 @@ export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage)
 });
 
-// For development - uncomment these if you want to use Firebase emulators
-// if (__DEV__) {
-//   try {
-//     connectFirestoreEmulator(db, 'localhost', 8080);
-//     connectAuthEmulator(auth, 'http://localhost:9099');
-//   } catch (error) {
-//     console.log('Emulator connection error:', error);
-//   }
-// }
 
 export default app;

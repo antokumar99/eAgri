@@ -1,12 +1,10 @@
 import React from "react";
 import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
 
-
 const CategoryCard = ({ category }) => {
   const { title, image } = category;
 
   return (
-    
     <TouchableOpacity style={styles.card}>
       <Image source={{ uri: image }} style={styles.image} />
       <Text style={styles.title}>{title}</Text>

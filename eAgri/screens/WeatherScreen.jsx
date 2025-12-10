@@ -12,21 +12,6 @@
 // import { MaterialIcons } from "@expo/vector-icons";
 // import Header from "../components/Header";
 
-// const WeatherScreen = () => {
-//   const [city, setCity] = useState("");
-//   const [coordinates, setCoordinates] = useState(null);
-//   const [weather, setWeather] = useState(null);
-//   const [loading, setLoading] = useState(false);
-//   const [error, setError] = useState(null);
-
-//   const fetchCoordinates = async () => {
-//     setLoading(true);
-//     try {
-//       const url =
-//         "https://nominatim.openstreetmap.org/search?" +
-//         `q=${encodeURIComponent(city)}` +
-//         "&format=geojson" +
-//         "&limit=1";
 
 //       console.log("Nominatim URL:", url);
 
@@ -53,17 +38,6 @@
 //       setCoordinates({ lat, lon });
 //       setError(null);
 
-//       // Fetch weather data once coordinates are retrieved
-//       fetchWeather(lat, lon);
-//     } catch (err) {
-//       console.error("Error fetching coordinates:", err.message);
-//       setError(err.message);
-//       setCoordinates(null);
-//       setWeather(null);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
 
 //   const fetchWeather = async (lat, lon) => {
 //     setLoading(true);
@@ -86,74 +60,17 @@
 //       const weatherData = await response.json();
 //       console.log("Weather Data:", weatherData);
 
-//       setWeather(weatherData);
-//       setError(null);
-//     } catch (err) {
-//       console.error("Error fetching weather:", err.message);
-//       setError(err.message);
-//       setWeather(null);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
 
 //   return (
 //     <SafeAreaView style={styles.container}>
 //       <Header title="Weather Forecast" />
 //       <Text style={styles.header}>Weather App</Text>
 
-//       <View style={styles.inputContainer}>
-//         <TextInput
-//           style={styles.input}
-//           placeholder="Enter city name"
-//           value={city}
-//           onChangeText={(text) => setCity(text)}
-//         />
-//         <Button title="Search" onPress={fetchCoordinates} />
-//       </View>
 
 //       {loading && <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />}
 
 //       {error && <Text style={styles.errorText}>Error: {error}</Text>}
 
-//       {coordinates && !loading && (
-//         <View style={styles.resultContainer}>
-//           <Text style={styles.resultText}>
-//             Coordinates for <Text style={styles.boldText}>{city}</Text>:
-//           </Text>
-//           <Text style={styles.resultText}>Latitude: {coordinates.lat}</Text>
-//           <Text style={styles.resultText}>Longitude: {coordinates.lon}</Text>
-//         </View>
-//       )}
-
-//       {weather && !loading && (
-//         <View style={styles.resultContainer}>
-//           <Text style={styles.resultText}>Weather for {city}:</Text>
-//           <View style={styles.weatherDetailContainer}>
-//             <MaterialIcons name="thermostat" size={24} color="black" />
-//             <Text style={styles.resultText}>Temperature: {weather.temp}°C</Text>
-//           </View>
-//           <View style={styles.weatherDetailContainer}>
-//             <MaterialIcons name="water-drop" size={24} color="black" />
-//             <Text style={styles.resultText}>Humidity: {weather.humidity}%</Text>
-//           </View>
-//           <View style={styles.weatherDetailContainer}>
-//             <MaterialIcons name="air" size={24} color="black" />
-//             <Text style={styles.resultText}>Wind Speed: {(weather.wind_speed * 3.6).toFixed(2)} km/h</Text>
-//           </View>
-//           <View style={styles.weatherDetailContainer}>
-//             <MaterialIcons name="wb-sunny" size={24} color="black" />
-//             <Text style={styles.resultText}>Sunrise: {new Date(weather.sunrise * 1000).toLocaleTimeString()}</Text>
-//           </View>
-//           <View style={styles.weatherDetailContainer}>
-//             <MaterialIcons name="nightlight-round" size={24} color="black" />
-//             <Text style={styles.resultText}>Sunset: {new Date(weather.sunset * 1000).toLocaleTimeString()}</Text>
-//           </View>
-//         </View>
-//       )}
-//     </SafeAreaView>
-//   );
-// };
 
 // const styles = StyleSheet.create({
 //   container: {
@@ -603,7 +520,6 @@ const WeatherScreen = () => {
       </View>
     );
   };
-
 
 
   // Render forecast card

@@ -1,70 +1,34 @@
-// const jwt = require('jsonwebtoken');
-
-// const authMiddleware = async (req, res, next) => {
-//     try {
-//         const authHeader = req.header('Authorization');
-        
-//         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-//             return res.status(401).json({
-//                 success: false,
-//                 message: 'Authorization header must start with Bearer'
-//             });
-//         }
-
-//         const token = authHeader.replace('Bearer ', '');
-        
-//         try {
-//             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//             req.user = decoded;
-//             next();
-//         } catch (error) {
-//             return res.status(401).json({
-//                 success: false,
-//                 message: 'Token is invalid or expired'
-//             });
-//         }
-//     } catch (error) {
-//         return res.status(500).json({
-//             success: false,
-//             message: 'Authentication error',
-//             error: error.message
-//         });
-//     }
-// };
-
-// module.exports = authMiddleware;
-
-// middleware/authMiddleware.js
-
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+// This middleware used to log the full request headers, the raw bearer token
+// and process.env.JWT_SECRET on every authenticated request. Anyone with access
+// to the server logs could mint tokens for any account, so all of it is gone.
 const authMiddleware = async (req, res, next) => {
   try {
-    console.log('Request Headers:', req.headers);
-    console.log('Content-Type:', req.headers['content-type']);
     const authHeader = req.headers.authorization;
-    console.log('Auth Header:', authHeader);
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('Invalid auth header format');
       return res.status(401).json({
         success: false,
         error: 'Authorization header must start with Bearer'
       });
     }
 
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not configured');
+      return res.status(500).json({
+        success: false,
+        error: 'Server authentication is misconfigured'
+      });
+    }
+
     const token = authHeader.split(' ')[1];
-    console.log('Extracted token:', token);
 
     try {
-      console.log('JWT Secret:', process.env.JWT_SECRET); // Be careful with this in production
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('Decoded token:', decoded);
-      
-      // Add more user verification here
+
       if (!decoded.id) {
-        console.log('Token missing user ID');
         return res.status(401).json({
           success: false,
           error: 'Invalid token format'
@@ -73,17 +37,18 @@ const authMiddleware = async (req, res, next) => {
 
       // Add user to request
       req.user = decoded;
-      console.log('User set in request:', req.user);
       next();
     } catch (tokenError) {
-      console.log('Token verification failed:', tokenError);
       return res.status(401).json({
         success: false,
-        error: 'Invalid or expired token'
+        error:
+          tokenError.name === 'TokenExpiredError'
+            ? 'Your session has expired. Please log in again.'
+            : 'Invalid or expired token'
       });
     }
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.error('Auth middleware error:', error.message);
     return res.status(401).json({
       success: false,
       error: 'Authentication failed'

@@ -36,7 +36,6 @@ const UpdatePost = ({ route, navigation }) => {
   const checkToken = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      console.log('Current token:', token);
       if (!token) {
         Alert.alert(
           'Authentication Required',

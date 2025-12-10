@@ -79,11 +79,6 @@ const ChatScreen = () => {
     };
 
     initializeChat();
-
-    // Cleanup on unmount
-    return () => {
-      chatService.cleanup();
-    };
   }, [userId]);
 
   // Handle screen focus - reestablish subscriptions when screen comes into focus
@@ -124,9 +119,13 @@ const ChatScreen = () => {
 
       setupSubscriptions();
 
-      // Cleanup when screen loses focus
+      // Drop only this screen's listeners. The previous version called
+      // chatService.cleanup(), which unsubscribed every listener in the app —
+      // including the Messages tab's — and flipped the user to offline the
+      // moment they backed out of a conversation.
       return () => {
-        chatService.cleanup();
+        chatService.cleanupSubscription(`messages_${chatId}`);
+        if (userId) chatService.cleanupSubscription(`presence_${userId}`);
       };
     }, [chatId, userId])
   );

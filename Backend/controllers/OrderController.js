@@ -2,13 +2,31 @@ const Order = require("../models/Order");
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 const User = require("../models/User");
+const {
+  OrderError,
+  priceCartItems,
+  reserveStock,
+  releaseStock,
+} = require("../utils/orderUtils");
 
 const orderController = {
   // Add to cart
   addToCart: async (req, res) => {
     try {
-      const { productId, quantity, isRental } = req.body;
+      const { productId } = req.body;
+      const quantity = Number(req.body.quantity);
       const userId = req.user.id;
+
+      // The cart is for purchases only — rentals go through /rentals/create,
+      // which needs a date range the cart has no way to express.
+      const isRental = false;
+
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Quantity must be a whole number of at least 1",
+        });
+      }
 
       // Validate product exists
       const product = await Product.findById(productId);
@@ -19,20 +37,17 @@ const orderController = {
         });
       }
 
-      // Check stock availability
-      if (product.stock < quantity) {
+      if (product.productType === "rent") {
         return res.status(400).json({
           success: false,
-          message: "Not enough stock available",
+          message: "This item is available for rent only. Use Rent Now instead.",
         });
       }
 
-      // Validate price based on rental status
-      const price = isRental ? product.rentPrice : product.price;
-      if (typeof price !== "number" || isNaN(price)) {
+      if (product.seller.toString() === userId) {
         return res.status(400).json({
           success: false,
-          message: "Invalid product price",
+          message: "You cannot buy your own product",
         });
       }
 
@@ -49,9 +64,28 @@ const orderController = {
 
       // Check if product already in cart
       const existingItemIndex = cart.items.findIndex(
-        (item) =>
-          item.product.toString() === productId && item.isRental === isRental
+        (item) => item.product.toString() === productId && !item.isRental
       );
+
+      // Stock is checked against the resulting cart quantity, not the increment,
+      // so repeatedly adding one unit cannot creep past available stock.
+      const alreadyInCart =
+        existingItemIndex !== -1 ? cart.items[existingItemIndex].quantity : 0;
+
+      if (product.stock < alreadyInCart + quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Only ${product.stock} in stock`,
+        });
+      }
+
+      const price = product.price;
+      if (typeof price !== "number" || isNaN(price)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid product price",
+        });
+      }
 
       if (existingItemIndex !== -1) {
         // Update quantity if product already in cart
@@ -100,7 +134,6 @@ const orderController = {
   // Get cart
   getCart: async (req, res) => {
     try {
-      console.log("Fetching cart data...");
       const userId = req.user.id;
 
       // Find cart and populate all necessary product and user details
@@ -129,11 +162,21 @@ const orderController = {
         });
       }
 
+      // A seller can delete a product that is sitting in someone's cart, which
+      // leaves item.product null after populate and used to crash this handler.
+      // Drop those lines and re-total instead.
+      const liveItems = cart.items.filter((item) => item.product);
+      if (liveItems.length !== cart.items.length) {
+        cart.items = liveItems;
+        cart.total = liveItems.reduce((sum, item) => sum + item.total, 0);
+        await cart.save();
+      }
+
       // Transform cart data to include calculated fields
       const transformedCart = {
         _id: cart._id,
         user: cart.user,
-        items: cart.items.map((item) => ({
+        items: liveItems.map((item) => ({
           _id: item._id,
           product: {
             _id: item.product._id,
@@ -168,12 +211,6 @@ const orderController = {
         hasRentalItems: cart.items.some((item) => item.isRental),
         hasPurchaseItems: cart.items.some((item) => !item.isRental),
       };
-
-      console.log("Cart fetched successfully:", {
-        cartId: cart._id,
-        itemCount: cart.items.length,
-        total: cart.total,
-      });
 
       res.status(200).json({
         success: true,
@@ -405,8 +442,10 @@ const orderController = {
 
   // Create order for Cash on Delivery
   createOrder: async (req, res) => {
+    let reserved = null;
+
     try {
-      const { address, total, cartItems, paymentMethod } = req.body;
+      const { address, cartItems } = req.body;
       const userId = req.user.id;
 
       const user = await User.findById(userId);
@@ -416,35 +455,32 @@ const orderController = {
           .json({ success: false, message: "User not found" });
       }
 
-      // Validate stock availability before creating order
-      for (const item of cartItems) {
-        const product = await Product.findById(item.product);
-        if (!product) {
-          return res.status(404).json({
-            success: false,
-            message: `Product ${item.product} not found`,
-          });
-        }
-
-        if (product.stock < item.quantity) {
-          return res.status(400).json({
-            success: false,
-            message: `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
-          });
-        }
+      const required = ["street", "city", "state", "zipCode", "phone"];
+      const missing = required.filter((f) => !address || !address[f]);
+      if (missing.length) {
+        return res.status(400).json({
+          success: false,
+          message: `Missing address fields: ${missing.join(", ")}`,
+        });
       }
 
-      const orderProducts = cartItems.map((item) => ({
-        product: item.product,
-        quantity: item.quantity,
-        price: item.price,
-      }));
+      // Total comes from the database, not the request body. The old version
+      // trusted the client's `total`, so the COD surcharge the checkout screen
+      // displayed was never actually charged (and any figure could be sent).
+      const priced = await priceCartItems(cartItems, {
+        paymentMethod: "Cash on Delivery",
+      });
+
+      reserved = await reserveStock(priced.lineItems);
 
       const order = new Order({
         user: userId,
-        products: orderProducts,
-        totalPrice: total,
-        paymentMethod: paymentMethod,
+        products: priced.lineItems,
+        subtotal: priced.subtotal,
+        deliveryFee: priced.deliveryFee,
+        codFee: priced.codFee,
+        totalPrice: priced.total,
+        paymentMethod: "Cash on Delivery",
         status: "Pending",
         paymentStatus: "Pending",
         shippingAddress: address,
@@ -452,15 +488,6 @@ const orderController = {
       });
 
       await order.save();
-
-      // Reduce stock for each product in the order
-      for (const item of cartItems) {
-        await Product.findByIdAndUpdate(
-          item.product,
-          { $inc: { stock: -item.quantity } },
-          { new: true }
-        );
-      }
 
       // Clear user's cart
       await Cart.findOneAndDelete({ user: userId });
@@ -472,11 +499,18 @@ const orderController = {
         order: order,
       });
     } catch (error) {
+      if (reserved) await releaseStock(reserved).catch(() => {});
+
+      if (error instanceof OrderError) {
+        return res
+          .status(error.status)
+          .json({ success: false, message: error.message });
+      }
+
       console.error("Error creating order:", error);
       return res.status(500).json({
         success: false,
-        message: "Internal server error",
-        error: error.message,
+        message: "Failed to place order",
       });
     }
   },
@@ -522,11 +556,11 @@ const orderController = {
     try {
       const userId = req.user.id;
 
+      const myProductIds = await Product.find({ seller: userId }).distinct("_id");
+
       // Find orders where the user is the seller of any product
       const orders = await Order.find({
-        "products.product": {
-          $in: await Product.find({ seller: userId }).distinct("_id"),
-        },
+        "products.product": { $in: myProductIds },
       })
         .populate({
           path: "products.product",
@@ -543,10 +577,27 @@ const orderController = {
         })
         .sort({ createdAt: -1 });
 
+      // A single order can span several sellers. Only this seller's line items
+      // belong in their view, and the total is recomputed to match — otherwise
+      // each seller would see the others' products and the full order value.
+      const scoped = orders.map((order) => {
+        const doc = order.toObject();
+        doc.products = doc.products.filter(
+          (item) =>
+            item.product &&
+            String(item.product.seller?._id || item.product.seller) === userId
+        );
+        doc.sellerSubtotal = doc.products.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0
+        );
+        return doc;
+      });
+
       return res.status(200).json({
         success: true,
         message: "Received orders retrieved successfully",
-        orders: orders,
+        orders: scoped.filter((o) => o.products.length > 0),
       });
     } catch (error) {
       console.error("Error getting received orders:", error);
@@ -590,7 +641,7 @@ const orderController = {
       if (order.user._id.toString() !== userId) {
         // Check if user is the seller of any product in the order
         const isSeller = order.products.some(
-          (item) => item.product.seller._id.toString() === userId
+          (item) => item.product && item.product.seller?._id.toString() === userId
         );
 
         if (!isSeller) {
@@ -623,7 +674,28 @@ const orderController = {
       const { status } = req.body;
       const userId = req.user.id;
 
-      const order = await Order.findById(orderId);
+      const allowed = [
+        "Pending",
+        "Processing",
+        "Shipped",
+        "Delivered",
+        "Cancelled",
+      ];
+      if (!allowed.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status. Expected one of: ${allowed.join(", ")}`,
+        });
+      }
+
+      // products.product must be populated before seller can be read — without
+      // this the authorization check threw on undefined and every status update
+      // came back as a 500.
+      const order = await Order.findById(orderId).populate({
+        path: "products.product",
+        select: "seller",
+      });
+
       if (!order) {
         return res.status(404).json({
           success: false,
@@ -633,7 +705,7 @@ const orderController = {
 
       // Check if user is the seller of any product in the order
       const isSeller = order.products.some(
-        (item) => item.product.seller.toString() === userId
+        (item) => item.product && item.product.seller.toString() === userId
       );
 
       if (!isSeller) {
@@ -644,19 +716,38 @@ const orderController = {
       }
 
       const previousStatus = order.status;
+
+      // A terminal order must stay terminal. Without this a cancelled order —
+      // whose stock has already gone back to the seller — could be marked
+      // Shipped, promising the buyer goods that were never reserved.
+      if (previousStatus === "Cancelled" && status !== "Cancelled") {
+        return res.status(400).json({
+          success: false,
+          message: "A cancelled order cannot be reopened",
+        });
+      }
+
+      if (previousStatus === "Delivered" && status !== "Delivered") {
+        return res.status(400).json({
+          success: false,
+          message: "A delivered order cannot change status",
+        });
+      }
+
       order.status = status;
-      await order.save();
 
       // If order is being cancelled, restore stock
       if (status === "Cancelled" && previousStatus !== "Cancelled") {
-        for (const item of order.products) {
-          await Product.findByIdAndUpdate(
-            item.product,
-            { $inc: { stock: item.quantity } },
-            { new: true }
-          );
+        if (!order.stockReleased) {
+          await releaseStock(order.products);
+          order.stockReleased = true;
+        }
+        if (order.paymentStatus === "Paid") {
+          order.paymentStatus = "Refunded";
         }
       }
+
+      await order.save();
 
       return res.status(200).json({
         success: true,
