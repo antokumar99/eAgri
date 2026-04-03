@@ -14,7 +14,6 @@
   <img src="https://img.shields.io/badge/Firebase-FFCA28?style=flat-square&logo=firebase&logoColor=black" />
   <img src="https://img.shields.io/badge/Cloudinary-3448C5?style=flat-square&logo=cloudinary&logoColor=white" />
   <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS-green?style=flat-square" />
-  <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" />
 </p>
 
 ---
@@ -255,7 +254,3 @@ npx react-native run-ios
 ```
 
 ---
-
-## 📄 License
-
-MIT © eAgri Team — *Made with ❤️ for farmers everywhere*
