@@ -6,7 +6,7 @@
 // A physical device cannot reach "localhost", so during development set this to
 // the LAN IP of the machine running the backend, e.g. http://192.168.0.103:3000.
 // The Android emulator uses http://10.0.2.2:3000.
-export const API_BASE_URL = "http://192.168.0.103:3000";
+export const API_BASE_URL = "http://192.168.0.100:3000";
 
 // How long to wait on a normal request before giving up.
 export const REQUEST_TIMEOUT = 15000;
