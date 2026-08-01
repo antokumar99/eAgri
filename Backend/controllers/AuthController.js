@@ -14,14 +14,76 @@ const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const User = require('../models/User');
+const { BACKEND_URL } = require('../config/appConfig');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail', 
-  auth: {
-    user: process.env.EMAIL_USERNAME, 
-    pass: process.env.EMAIL_PASSWORD
+// Google displays app passwords as "abcd efgh ijkl mnop". Pasting that verbatim
+// is rejected with 535-5.7.8, so the spaces are stripped here rather than
+// leaving it as a trap in the .env file.
+const emailPassword = (process.env.EMAIL_PASSWORD || '').replace(/\s+/g, '');
+const emailConfigured = Boolean(process.env.EMAIL_USERNAME && emailPassword);
+
+const transporter = emailConfigured
+  ? nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.EMAIL_USERNAME, pass: emailPassword }
+    })
+  : null;
+
+// Set AUTO_VERIFY_USERS=true in Backend/.env to skip email verification. Intended
+// for local development, where outbound SMTP is often unavailable. Ignored in
+// production so a misconfigured deploy cannot silently accept unverified users.
+const autoVerify =
+  String(process.env.AUTO_VERIFY_USERS).toLowerCase() === 'true' &&
+  process.env.NODE_ENV !== 'production';
+
+// The verification route lives on this API, so the link must point at the
+// backend. It previously used FRONTEND_URL, which defaults to localhost and is
+// unreachable from a phone.
+const buildVerificationUrl = (token) => `${BACKEND_URL}/verify-email/${token}`;
+
+/**
+ * Sends the verification email. Returns false instead of throwing when mail
+ * cannot be delivered — a signup must not be lost because SMTP is down.
+ */
+const sendVerificationEmail = async (email, name, token) => {
+  const verificationUrl = buildVerificationUrl(token);
+
+  if (!transporter) {
+    console.warn(
+      `[auth] Email is not configured. Verification link for ${email}:\n  ${verificationUrl}`
+    );
+    return false;
   }
-});
+
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_USERNAME,
+      to: email,
+      subject: 'Please verify your email',
+      html: `
+        <h1>Welcome to eAgri!</h1>
+        <p>Hello ${name || 'there'}, thanks for registering. Please confirm your email address:</p>
+        <a href="${verificationUrl}" style="
+          background-color: #008E97;
+          color: white;
+          padding: 12px 24px;
+          text-decoration: none;
+          border-radius: 4px;
+          display: inline-block;
+          margin: 16px 0;
+        ">Verify your email</a>
+        <p>If the button doesn't work, copy this link into your browser:</p>
+        <p>${verificationUrl}</p>
+      `
+    });
+    return true;
+  } catch (error) {
+    // Surfaced in the server log so a developer can still complete the flow.
+    console.error(`[auth] Could not send verification email to ${email}:`, error.message);
+    console.warn(`[auth] Verification link for ${email}:\n  ${verificationUrl}`);
+    return false;
+  }
+};
 
 module.exports = {
   // -------------------------------
@@ -55,46 +117,39 @@ module.exports = {
         address,
         photo,
         farm,
-        verified: false,
-        verificationToken
+        verified: autoVerify,
+        verificationToken: autoVerify ? undefined : verificationToken
       });
 
       // Save user
       await newUser.save();
 
-      // Send verification email
-      const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
-      const emailContent = `
-        <h1>Welcome to eAgri!</h1>
-        <p>Thank you for registering. Please click the button below to verify your email address:</p>
-        <a href="${verificationUrl}" style="
-          background-color: #008E97;
-          color: white;
-          padding: 12px 24px;
-          text-decoration: none;
-          border-radius: 4px;
-          display: inline-block;
-          margin: 16px 0;
-        ">Verify your email</a>
-        <p>If the button doesn't work, you can also copy and paste this link in your browser:</p>
-        <p>${verificationUrl}</p>
-      `;
+      if (autoVerify) {
+        return res.status(201).json({
+          success: true,
+          emailSent: false,
+          verified: true,
+          message: 'Account created. You can log in now.'
+        });
+      }
 
-      const mailOptions = {
-        from: process.env.EMAIL_USERNAME, 
-        to: email,
-        subject: 'Please verify your email',
-        html: emailContent
-      };
-
-      await transporter.sendMail(mailOptions);
+      // The send is deliberately NOT awaited inside the try/catch that returns
+      // 500. Previously a rejected sendMail threw after the user had already
+      // been saved, so the caller saw "registration failed" while the account
+      // existed unverified — they could then neither log in ("verify your
+      // email") nor register again ("user already exists"). Permanently stuck.
+      const emailSent = await sendVerificationEmail(email, name, verificationToken);
 
       return res.status(201).json({
         success: true,
-        message: 'User registered successfully! Please check your email to verify your account.'
+        emailSent,
+        verified: false,
+        message: emailSent
+          ? 'Account created. Check your email to verify your account.'
+          : 'Account created, but the verification email could not be sent. Use "Resend verification email", or ask an administrator to verify the account.'
       });
     } catch (error) {
-      console.error(error);
+      console.error('Registration error:', error.message);
       return res.status(500).json({
         success: false,
         message: 'Something went wrong during registration',
@@ -235,33 +290,24 @@ module.exports = {
       user.verificationToken = newVerificationToken;
       await user.save();
 
-      // Send verification email
-      const verificationLink = `${req.protocol}://${req.get(
-        'host'
-      )}/verify-email/${newVerificationToken}`;
+      const emailSent = await sendVerificationEmail(
+        user.email,
+        user.name,
+        newVerificationToken
+      );
 
-      // or use an external link:
-      // const verificationLink = `${process.env.MOBILE_APP_URL}/verify?token=${newVerificationToken}`;
-
-      const mailOptions = {
-        from: process.env.EMAIL_USERNAME, 
-        to: user.email,
-        subject: 'Please verify your email',
-        html: `
-          <p>Hello ${user.name},</p>
-          <p>Please verify your email by clicking the link below:</p>
-          <a href="${verificationLink}" target="_blank">Verify Email</a>
-        `
-      };
-
-      await transporter.sendMail(mailOptions);
-
+      // A dead SMTP connection used to 500 here too, leaving no way forward.
+      // The token is rotated regardless, and the link is printed to the server
+      // log so the account can still be verified.
       return res.status(200).json({
         success: true,
-        message: 'Verification email resent successfully!'
+        emailSent,
+        message: emailSent
+          ? 'Verification email resent successfully!'
+          : 'Could not send the email. The verification link has been written to the server log.'
       });
     } catch (error) {
-      console.error(error);
+      console.error('Resend verification error:', error.message);
       return res.status(500).json({
         success: false,
         message: 'Something went wrong while resending verification email',
@@ -290,7 +336,9 @@ module.exports = {
       if (!user.verified) {
         return res.status(403).json({
           success: false,
-          message: 'Please verify your email before logging in.'
+          needsVerification: true,
+          message:
+            'Please verify your email before logging in. Tap "Resend verification email" if it never arrived.'
         });
       }
 

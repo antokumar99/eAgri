@@ -173,23 +173,30 @@ export default function RegisterScreen({ navigation }) {
         },
       };
 
-      console.log("Sending registration request:", user); // Add this for debugging
-
       const response = await api.post("/register", user);
 
-      console.log("Registration response:", response.data); // Add this for debugging
-
       if (response.data.success) {
+        const { emailSent, verified } = response.data;
+
+        // The server reports whether the verification mail actually went out.
+        // It used to only ever say "check your email", which was misleading
+        // when SMTP was down and left no obvious way forward.
         Alert.alert(
-          "Success",
+          verified ? "Account Created" : "Almost There",
           response.data.message ||
             "Registration successful. Please check your email to verify.",
-          [
-            {
-              text: "OK",
-              onPress: () => navigation.navigate("Login"),
-            },
-          ]
+          verified || emailSent
+            ? [{ text: "OK", onPress: () => navigation.navigate("Login") }]
+            : [
+                {
+                  text: "Resend Email",
+                  onPress: () => resendVerification(email.trim().toLowerCase()),
+                },
+                {
+                  text: "Go to Login",
+                  onPress: () => navigation.navigate("Login"),
+                },
+              ]
         );
 
         // Clear input fields
@@ -204,7 +211,7 @@ export default function RegisterScreen({ navigation }) {
         Alert.alert("Error", response.data.message || "Registration failed");
       }
     } catch (error) {
-      console.log("Registration error:", error.response || error); // Add this for debugging
+      console.log("Registration error:", error.response?.data || error.message);
 
       const errorMessage =
         error.response?.data?.message ||
@@ -212,7 +219,39 @@ export default function RegisterScreen({ navigation }) {
         error.message ||
         "Registration failed. Please try again.";
 
+      // An account that already exists is almost always a half-finished signup,
+      // so offer the recovery path instead of a bare error.
+      if (error.response?.status === 400 && /already exists/i.test(errorMessage)) {
+        Alert.alert("Email Already Registered", errorMessage, [
+          {
+            text: "Resend Verification",
+            onPress: () => resendVerification(email.trim().toLowerCase()),
+          },
+          { text: "Go to Login", onPress: () => navigation.navigate("Login") },
+          { text: "Cancel", style: "cancel" },
+        ]);
+        return;
+      }
+
       Alert.alert("Error", errorMessage);
+    }
+  };
+
+  const resendVerification = async (targetEmail) => {
+    try {
+      const { data } = await api.post("/resend-verification", {
+        email: targetEmail,
+      });
+      Alert.alert(
+        data.emailSent ? "Email Sent" : "Could Not Send Email",
+        data.message,
+        [{ text: "OK", onPress: () => navigation.navigate("Login") }]
+      );
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error.response?.data?.message || "Could not resend the verification email."
+      );
     }
   };
 
