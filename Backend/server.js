@@ -85,10 +85,32 @@ const startServer = async () => {
   // Bind on 0.0.0.0 so phones on the same Wi-Fi can reach it, not just this
   // machine. The addresses are printed because "the app can't connect" is
   // almost always a wrong-host problem.
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n  Server running`);
     console.log(`    local:   http://localhost:${PORT}`);
     console.log(`    network: ${BACKEND_URL}   <- phones use this\n`);
+  });
+
+  // Without a handler, an in-use port surfaces as an unhandled 'error' event
+  // and a 20-line stack trace that says nothing about how to fix it. This is
+  // the single most common startup failure: a previous run is still alive,
+  // usually because a terminal was closed without stopping it.
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(
+        `\n  Port ${PORT} is already in use — another copy of this server is running.\n\n` +
+        `  Find and stop it:\n` +
+        `    Windows:      npx kill-port ${PORT}\n` +
+        `                  (or) netstat -ano | findstr :${PORT}   then   taskkill /PID <pid> /F\n` +
+        `    macOS/Linux:  lsof -ti:${PORT} | xargs kill -9\n\n` +
+        `  Or run this one on a different port:  PORT=3001 npm run dev\n`
+      );
+    } else if (err.code === 'EACCES') {
+      console.error(`\n  Not allowed to bind port ${PORT}. Try a port above 1024.\n`);
+    } else {
+      console.error('\n  Server error:', err.message, '\n');
+    }
+    process.exit(1);
   });
 };
 
