@@ -362,15 +362,33 @@ const MessagesScreen = () => {
     );
   }, [formatTime, getInitials, getMessageIcon, handleChatPress, searchQuery, searchMode]);
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="chatbubbles-outline" size={80} color={chatColors.text.secondary} />
-      <Text style={styles.emptyTitle}>No conversations yet</Text>
-      <Text style={styles.emptySubtitle}>
-        Start a conversation by visiting someone's profile and tapping the message button, or begin chatting from posts and products.
-      </Text>
-    </View>
-  );
+  const renderEmptyState = () => {
+    // A blocked Firestore looks exactly like an empty inbox, which sent people
+    // hunting for a bug in the app instead of the project's security rules.
+    if (chatService.permissionDenied) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="lock-closed-outline" size={72} color="#d9534f" />
+          <Text style={styles.emptyTitle}>Chat unavailable</Text>
+          <Text style={styles.emptySubtitle}>
+            The Firebase project is rejecting requests. Update the Firestore
+            security rules for the chats, messages and users collections, then
+            pull to refresh.
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyContainer}>
+        <Ionicons name="chatbubbles-outline" size={80} color={chatColors.text.secondary} />
+        <Text style={styles.emptyTitle}>No conversations yet</Text>
+        <Text style={styles.emptySubtitle}>
+          Start a conversation by visiting someone's profile and tapping the message button, or begin chatting from posts and products.
+        </Text>
+      </View>
+    );
+  };
 
   const renderSearchEmptyState = () => (
     <View style={styles.emptyContainer}>

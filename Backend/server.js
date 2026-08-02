@@ -5,7 +5,7 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 const path = require('path');
 const fs = require('fs');
-const { PORT, isProduction } = require('./config/appConfig');
+const { PORT, isProduction, BACKEND_URL } = require('./config/appConfig');
 
 // Fail fast rather than starting a server that cannot verify a single token or
 // talk to the database.
@@ -82,8 +82,13 @@ app.use((err, req, res, next) => {
 // Start server only after successful database connection
 const startServer = async () => {
   await connectDB();
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  // Bind on 0.0.0.0 so phones on the same Wi-Fi can reach it, not just this
+  // machine. The addresses are printed because "the app can't connect" is
+  // almost always a wrong-host problem.
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n  Server running`);
+    console.log(`    local:   http://localhost:${PORT}`);
+    console.log(`    network: ${BACKEND_URL}   <- phones use this\n`);
   });
 };
 

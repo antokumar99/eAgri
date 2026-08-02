@@ -1,19 +1,36 @@
 require("dotenv").config();
+const os = require("os");
 
 const stripTrailingSlash = (value) => String(value || "").replace(/\/+$/, "");
 
 const PORT = process.env.PORT || 3000;
 
+/** First non-internal IPv4 address, i.e. how other devices on the Wi-Fi see us. */
+const detectLanIp = () => {
+  for (const addresses of Object.values(os.networkInterfaces())) {
+    for (const addr of addresses || []) {
+      if (addr.family === "IPv4" && !addr.internal) return addr.address;
+    }
+  }
+  return "localhost";
+};
+
+const LAN_IP = detectLanIp();
+
 // Public base URL of this API. SSLCommerz calls back to these URLs from its own
-// servers, so "localhost" only works when the gateway can reach this machine.
-// In development with the Expo app on a phone, set BACKEND_URL to the LAN IP
-// (e.g. http://192.168.0.103:3000); for a real sandbox/live integration this
-// must be a publicly reachable URL.
+// servers, and the app opens verification links from a phone, so "localhost"
+// is wrong in both cases.
+//
+// A hardcoded LAN IP goes stale the moment the router issues a new lease, which
+// is why this now falls back to detecting the current address rather than a
+// fixed string. For a real sandbox/live SSLCommerz integration, set BACKEND_URL
+// explicitly to a publicly reachable URL.
 const BACKEND_URL =
-  stripTrailingSlash(process.env.BACKEND_URL) || `http://localhost:${PORT}`;
+  stripTrailingSlash(process.env.BACKEND_URL) || `http://${LAN_IP}:${PORT}`;
 
 module.exports = {
   PORT,
+  LAN_IP,
   BACKEND_URL,
   FRONTEND_URL: stripTrailingSlash(process.env.FRONTEND_URL) || BACKEND_URL,
   NODE_ENV: process.env.NODE_ENV || "development",

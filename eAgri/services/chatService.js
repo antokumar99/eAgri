@@ -17,6 +17,20 @@ import {
 import { db } from './firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+/**
+ * Firestore replies `permission-denied` when the project's security rules block
+ * the request. Every chat call then fails silently and Messages just looks
+ * empty, which is indistinguishable from "no conversations yet". Detecting it
+ * lets the UI say what is actually wrong.
+ */
+export const isPermissionDenied = (error) =>
+  error?.code === 'permission-denied' ||
+  /insufficient permissions/i.test(error?.message || '');
+
+export const FIRESTORE_RULES_HELP =
+  'Chat is unavailable: the Firebase project is rejecting requests. ' +
+  'Update the Firestore security rules for the chats, messages and users collections.';
+
 class ChatService {
   constructor() {
     this.messagesCollection = 'messages';
@@ -24,6 +38,24 @@ class ChatService {
     this.chatsCollection = 'chats';
     this.currentUser = null;
     this.unsubscribers = new Map();
+    // Set once Firestore rejects a call, so screens can explain the failure
+    // instead of rendering a misleading empty state.
+    this.permissionDenied = false;
+  }
+
+  /** Records a permission failure and returns true when that is the cause. */
+  notePermissionError(error) {
+    if (isPermissionDenied(error)) {
+      if (!this.permissionDenied) {
+        console.warn(
+          '[chat] Firestore denied the request. Check the security rules for ' +
+            'the "chats", "messages" and "users" collections in the Firebase console.'
+        );
+      }
+      this.permissionDenied = true;
+      return true;
+    }
+    return false;
   }
 
   // Initialize current user from AsyncStorage
@@ -93,7 +125,8 @@ class ChatService {
         avatar: this.currentUser.avatar || null
       }, { merge: true });
     } catch (error) {
-      console.error('Error updating user presence:', error);
+      this.notePermissionError(error);
+      console.error('Error updating user presence:', error.message);
     }
   }
 
@@ -306,7 +339,8 @@ class ChatService {
 
       return chatRooms;
     } catch (error) {
-      console.error('Error getting chat rooms:', error);
+      this.notePermissionError(error);
+      console.error('Error getting chat rooms:', error.message);
       return [];
     }
   }
@@ -330,7 +364,8 @@ class ChatService {
       const unsubscribe = onSnapshot(q, (snapshot) => {
         callback();
       }, (error) => {
-        console.error('Error listening to chat rooms:', error);
+        this.notePermissionError(error);
+        console.error('Error listening to chat rooms:', error.message);
       });
 
       // Store unsubscriber for cleanup
@@ -393,7 +428,8 @@ class ChatService {
 
       return demoChatIds;
     } catch (error) {
-      console.error('Error cleaning up demo chats:', error);
+      this.notePermissionError(error);
+      console.error('Error cleaning up demo chats:', error.message);
       return [];
     }
   }
@@ -426,7 +462,8 @@ class ChatService {
 
       return counts;
     } catch (error) {
-      console.error('Error counting unread messages:', error);
+      this.notePermissionError(error);
+      console.error('Error counting unread messages:', error.message);
       return {};
     }
   }

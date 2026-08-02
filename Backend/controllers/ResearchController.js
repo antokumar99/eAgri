@@ -6,9 +6,12 @@ const ResearchController = {
         try {
             const research = await Research.find()
                 .sort({ publishedDate: -1 }); // Sort by newest first
-            if (!research || research.length === 0) {
-                return res.status(404).json({ message: 'No research papers found' });
-            }
+
+            // An empty collection is not an error. This used to return 404,
+            // which sent ResearchScreen down its catch branch and showed
+            // "Error fetching research papers" — even though the screen
+            // already has a perfectly good "No research papers available"
+            // empty state that could never be reached.
             res.status(200).json(research);
         } catch (error) {
             res.status(500).json({ message: 'Error fetching research papers', error: error.message });

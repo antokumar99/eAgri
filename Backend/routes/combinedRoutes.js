@@ -75,7 +75,9 @@ router.get("/users/:userId", authMiddleware, UserController.getUserById);
 
 // Research routes
 router.get("/research", ResearchController.getAllResearch);
-router.post("/research", ResearchController.addResearch);
+// Writing was unauthenticated, so anyone who could reach the API could publish
+// entries into the Research feed.
+router.post("/research", authMiddleware, ResearchController.addResearch);
 
 // Post routes
 router.post(
@@ -170,8 +172,6 @@ router.put(
 
 // Add this route to test authentication
 router.get("/test-auth", authMiddleware, (req, res) => {
-  console.log("Test auth endpoint hit");
-  console.log("User from request:", req.user);
   res.json({
     success: true,
     message: "Authentication successful",

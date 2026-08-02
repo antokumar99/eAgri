@@ -9,8 +9,9 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "test": "node tests/smoke.test.js",
-    "dev:memory": "node tests/devServer.js"
+    "test": "node tests/smoke.test.js && node tests/fullFlow.test.js",
+    "dev:memory": "node tests/devServer.js",
+    "test:full": "node tests/fullFlow.test.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
