@@ -12,8 +12,19 @@ import { NativeModules, Platform } from "react-native";
 
 const API_PORT = 3000;
 
-/** Manual override. Leave null to auto-detect. e.g. "http://10.0.0.7:3000" */
-const API_BASE_URL_OVERRIDE = null;
+/**
+ * Production API URL, baked in at build time.
+ *
+ * Expo inlines any EXPO_PUBLIC_* variable into the bundle, so a release build
+ * gets its address from the environment rather than from Metro (which is not
+ * running on an installed app). Set it in eas.json per build profile, or in a
+ * .env file for local builds:
+ *
+ *   EXPO_PUBLIC_API_URL=https://api.your-domain.com
+ *
+ * Without this a release build falls back to localhost and every request fails.
+ */
+const API_BASE_URL_OVERRIDE = process.env.EXPO_PUBLIC_API_URL || null;
 
 /**
  * Metro exposes its own URL through SourceCode.scriptURL, e.g.
@@ -40,7 +51,13 @@ function resolveBaseUrl() {
   const host = hostFromMetro();
   if (host) return `http://${host}:${API_PORT}`;
 
-  // Release builds have no Metro. Point this at your deployed API.
+  // No Metro and no EXPO_PUBLIC_API_URL: this is a release build that was
+  // never told where its backend lives. localhost cannot work on a phone, so
+  // say so loudly rather than failing every request with a vague network error.
+  console.error(
+    '[eAgri] No API URL configured. Set EXPO_PUBLIC_API_URL before building a ' +
+      'release, e.g. EXPO_PUBLIC_API_URL=https://api.your-domain.com'
+  );
   return `http://localhost:${API_PORT}`;
 }
 

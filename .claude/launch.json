@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "eAgri API",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "Backend", "run", "dev"],
+      "port": 3000,
+      "autoPort": false
+    },
+    {
+      "name": "eAgri App",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "eAgri", "run", "web"],
+      "port": 8081,
+      "autoPort": false
+    }
+  ]
+}
