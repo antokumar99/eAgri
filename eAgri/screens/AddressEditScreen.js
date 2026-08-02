@@ -53,16 +53,24 @@ export default function AddressEditScreen() {
   const handleUpdate = async () => {
     setUpdating(true);
     try {
-      const token = await AsyncStorage.getItem('token');
-      const response = await api.put('/profile/address', { address }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // There is no /profile/address endpoint — this used to 404 on every
+      // save, so the address could never be changed. The profile route accepts
+      // a partial update, and address is one of the fields it merges.
+      const response = await api.put('/profile', { address });
 
-      Alert.alert('Success', 'Address updated successfully');
-      navigation.goBack();
+      if (response.data.success) {
+        Alert.alert('Success', 'Address updated successfully', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to update address');
+      }
     } catch (error) {
-      console.error('Error updating address:', error);
-      Alert.alert('Error', 'Failed to update address');
+      console.error('Error updating address:', error.message);
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Failed to update address'
+      );
     } finally {
       setUpdating(false);
     }

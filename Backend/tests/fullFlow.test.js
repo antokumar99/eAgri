@@ -260,6 +260,21 @@ const ok = (name, cond, detail = '') => {
   r = await api().post('/posts').set(auth(sellerTok)).field('text', '');
   ok('empty post rejected', r.status === 400);
 
+  // Regression: every upload used to fail because the client set
+  // "Content-Type: multipart/form-data" by hand, which drops the boundary
+  // parameter. Creating and editing posts and products were all broken.
+  r = await api()
+    .post('/posts')
+    .set(auth(sellerTok))
+    .set('Content-Type', 'multipart/form-data') // no boundary
+    .send('text=nope');
+  ok('multipart without a boundary is rejected', r.status >= 400,
+    `-> ${r.status}`);
+
+  r = await api().post('/posts').set(auth(sellerTok)).field('text', 'boundary ok');
+  ok('multipart with a boundary succeeds', r.status === 201, `-> ${r.status}`);
+  await api().delete(`/posts/${r.body.data._id}`).set(auth(sellerTok));
+
   r = await api().get('/posts').set(auth(buyerTok));
   ok('feed lists posts', r.body.data.length === 1);
   ok('pagination metadata', r.body.pagination?.total === 1);

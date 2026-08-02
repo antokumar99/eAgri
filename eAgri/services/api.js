@@ -19,14 +19,30 @@ api.interceptors.request.use(
   async (config) => {
     try {
       const token = await AsyncStorage.getItem('token');
-      //console.log('Token from storage:', token);  // to show the token
-      
+
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      
-      //console.log('Final request headers:', config.headers);  // to show the headers
-      
+
+      // A multipart body must carry "; boundary=..." in its Content-Type, and
+      // only the HTTP layer knows the boundary it generated. Setting the header
+      // by hand — which every upload call site used to do — suppressed that,
+      // and multer rejected the request with "Multipart: Boundary not found".
+      // Deleting the header lets React Native fill it in properly.
+      //
+      // This is why creating or editing a post or product failed while
+      // everything else worked: those are the only multipart requests.
+      const isFormData =
+        typeof FormData !== 'undefined' && config.data instanceof FormData;
+
+      if (isFormData) {
+        delete config.headers['Content-Type'];
+        delete config.headers['content-type'];
+        if (config.headers.common) delete config.headers.common['Content-Type'];
+        if (config.headers.post) delete config.headers.post['Content-Type'];
+        if (config.headers.put) delete config.headers.put['Content-Type'];
+      }
+
       return config;
     } catch (error) {
       console.error('Error in request interceptor:', error);
@@ -66,36 +82,38 @@ api.interceptors.response.use(
   }
 );
 
-// Add this function to handle multipart/form-data requests
+/**
+ * Multipart upload helper.
+ *
+ * Content-Type is deliberately NOT set here. The request interceptor strips it
+ * for FormData bodies so React Native can supply the boundary; hardcoding
+ * "multipart/form-data" is what broke every upload. The auth header is added by
+ * the interceptor too, so it is not repeated.
+ */
+const formDataConfig = (config = {}) => ({
+  timeout: UPLOAD_TIMEOUT, // Uploads carry image payloads
+  maxContentLength: Infinity,
+  maxBodyLength: Infinity,
+  ...config,
+});
+
 api.postFormData = async (url, formData, config = {}) => {
   try {
-    const token = await AsyncStorage.getItem('token');
-
-    const defaultConfig = {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
-      timeout: UPLOAD_TIMEOUT, // Uploads carry image payloads
-      maxContentLength: Infinity, // Allow large content
-      maxBodyLength: Infinity, // Allow large body
-    };
-
-    const mergedConfig = {
-      ...defaultConfig,
-      ...config,
-      headers: {
-        ...defaultConfig.headers,
-        ...config.headers,
-      },
-    };
-
     // A network error was previously swallowed and reported to the caller as
     // `{ success: true, message: 'Post created successfully' }`. Users were
     // told their post had been published when nothing had reached the server.
-    return await api.post(url, formData, mergedConfig);
+    return await api.post(url, formData, formDataConfig(config));
   } catch (error) {
     console.error('Error in postFormData:', error.message);
+    throw error;
+  }
+};
+
+api.putFormData = async (url, formData, config = {}) => {
+  try {
+    return await api.put(url, formData, formDataConfig(config));
+  } catch (error) {
+    console.error('Error in putFormData:', error.message);
     throw error;
   }
 };

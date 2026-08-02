@@ -173,13 +173,7 @@ const EditProductScreen = ({ route, navigation }) => {
         });
       }
 
-      const response = await api.put(`/products/${productId}`, formData, {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await api.putFormData(`/products/${productId}`, formData);
 
       if (response.data.success) {
         Alert.alert("Success", "Product updated successfully");

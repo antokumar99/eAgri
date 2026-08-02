@@ -203,11 +203,9 @@ const UpdatePost = ({ route, navigation }) => {
       // Add original image ID to handle image updates/deletions
       formData.append('originalImageId', originalImageId || '');
 
-      const response = await api.put(`/posts/${post._id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await api.putFormData(`/posts/${post._id}`, formData, {
         onUploadProgress: (progressEvent) => {
+          if (!progressEvent.total) return;
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(percentCompleted);
         }

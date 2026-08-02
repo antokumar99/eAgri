@@ -116,7 +116,6 @@ const AddProductScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem("token");
       const formData = new FormData();
 
       // Append basic product data
@@ -160,13 +159,9 @@ const AddProductScreen = ({ navigation }) => {
         }));
       }
 
-      const response = await api.post("/addproducts", formData, {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // Content-Type is intentionally not set: React Native must generate the
+      // multipart boundary itself. Auth is added by the request interceptor.
+      const response = await api.postFormData("/addproducts", formData);
 
       Alert.alert("Success", "Product added successfully");
       navigation.goBack();
