@@ -22,9 +22,10 @@ import api from "../services/api";
 const UpdatePost = ({ route, navigation }) => {
   const { post } = route.params;
   const [postText, setPostText] = useState(post.text);
-  const [postImage, setPostImage] = useState(post.imagePublicId ? 
-    `https://res.cloudinary.com/dfm7lhrwz/image/upload/${post.imagePublicId}` : null
-  );
+  // The API already exposes imageUrl (a virtual on the Post model), so the
+  // Cloudinary cloud name does not need repeating here — it was hardcoded and
+  // would break the moment the backend pointed at a different account.
+  const [postImage, setPostImage] = useState(post.imageUrl || null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [originalImageId, setOriginalImageId] = useState(post.imagePublicId);

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { cloudName } = require('../utils/cloudinary');
 
 const postSchema = new mongoose.Schema({
   userId: {
@@ -27,7 +28,10 @@ const postSchema = new mongoose.Schema({
 // Add virtual for imageUrl
 postSchema.virtual('imageUrl').get(function() {
   if (this.imagePublicId) {
-    return `https://res.cloudinary.com/dfm7lhrwz/image/upload/${this.imagePublicId}`;
+    // Cloud name comes from config rather than being baked in, so pointing the
+    // project at a different Cloudinary account does not silently keep serving
+    // images from the old one.
+    return `https://res.cloudinary.com/${cloudName}/image/upload/${this.imagePublicId}`;
   }
   return '';
 });
